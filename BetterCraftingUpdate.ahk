@@ -941,13 +941,6 @@ RunDiagnostics:
         errorMessages .= "- Uncommon DPI scaling detected (" . A_ScreenDPI . " DPI). Please set display scaling to 100% or 125% in Windows settings.`n"
     }
 
-    ; Check 6: Keyboard Layout
-    hkl := DllCall("GetKeyboardLayout", "UInt", 0)
-    layoutID := hkl & 0xFFFF ; extract low word 
-    layoutHex := Format("{:04X}", layoutID)
-    if (layoutHex != "0409") { ; English (United States)
-        errorMessages .= "- Current keyboard layout is not English (US) (ID: 0x" . layoutHex . "). Please switch your keyboard layout to 'English (United States)'.`n"
-    }
 
     ; Check 7: Screen Resolution
     isSupported := (A_ScreenWidth = 1920 && A_ScreenHeight = 1080) || (A_ScreenWidth = 2560 && A_ScreenHeight = 1440)
