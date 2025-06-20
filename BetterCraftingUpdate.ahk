@@ -117,34 +117,47 @@ gearScroll_1080p     := [1, 2, 4, 6, 8, 9, 11, 13]
 gearScroll_1440p_100 := [2, 3, 6, 8, 10, 13, 15, 17]
 gearScroll_1440p_125 := [1, 3, 4, 6, 8, 9, 12, 12]
 
+global COLOR_SUCCESS   := 3066993   ; Green
+global COLOR_ERROR     := 15158332  ; Red
+global COLOR_WARNING   := 15105570  ; Orange
+global COLOR_INFO      := 3447003   ; Blue
+global COLOR_COMPLETED := 9896155   ; Purple
+
 ; http functions
 
-SendDiscordMessage(webhookURL, message) {
+SendDiscordMessage(webhookURL, title, description := "", color := 3447003, doPing := false) {
+    global discordUserID, PingSelected
+
+    if (!webhookURL || InStr(webhookURL, " "))
+        return
+
     nowUTC := A_NowUTC
+    FormatTime, isoTimestamp, %nowUTC%, yyyy-MM-ddTHH:mm:ss.000Z
 
-    year  := SubStr(nowUTC, 1, 4)
-    month := SubStr(nowUTC, 5, 2)
-    day   := SubStr(nowUTC, 7, 2)
-    hour  := SubStr(nowUTC, 9, 2)
-    min   := SubStr(nowUTC, 11, 2)
-    sec   := SubStr(nowUTC, 13, 2)
+    ; Basic JSON escaping
+    title := StrReplace(StrReplace(title, "\", "\\"), """", "\""")
+    description := StrReplace(StrReplace(StrReplace(description, "\", "\\"), """", "\"""), "`n", "\n")
 
-    epochStart := "19700101000000"
-    EnvSub, nowUTC, %epochStart%, seconds
-    unixTime := nowUTC
+    embed := "{""title"": """ . title . ""","
+            . """description"": """ . description . ""","
+            . """color"": " . color . ","
+            . """timestamp"": """ . isoTimestamp . ""","
+            . """footer"": {""text"": ""GAG MACRO""}}"
 
-    fullMessage := "<t:" . unixTime . ":T> " . message
+    jsonPayload := "{""embeds"": [" . embed . "]}"
 
-    json := "{""content"": """ . fullMessage . """}"
+    if (doPing && PingSelected && discordUserID) {
+        pingContent := "<@" . discordUserID . ">"
+        jsonPayload := "{""content"": """ . pingContent . """, ""embeds"": [" . embed . "]}"
+    }
+
     whr := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-
     try {
         whr.Open("POST", webhookURL, false)
         whr.SetRequestHeader("Content-Type", "application/json")
-        whr.Send(json)
+        whr.Send(jsonPayload)
         whr.WaitForResponse()
         status := whr.Status
-
         if (status != 200 && status != 204) {
             return
         }
@@ -674,7 +687,7 @@ closeShop(shop, success) {
 
         ToolTip, % "Error In Detecting " . shop
         SetTimer, HideTooltip, -1500
-        SendDiscordMessage(webhookURL, "Failed To Detect " . shop . " Shop Opening [Error]" . (PingSelected ? " <@" . discordUserID . ">" : ""))
+        SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect " . shop . " shop opening.", COLOR_ERROR, PingSelected)
         ; failsafe
         uiUniversal("3332223111133322231111054105")
 
@@ -735,12 +748,12 @@ quickDetectEgg(buyColor, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2Rati
                     if (simpleDetect(buyColor, variation, 0.40, 0.60, 0.65, 0.70)) {
                         ToolTip, % currentItem . "`nIn Stock, Not Selected"
                         SetTimer, HideTooltip, -1500
-                        SendDiscordMessage(webhookURL, currentItem . " In Stock, Not Selected")
+                        SendDiscordMessage(webhookURL, "Item In Stock", currentItem . " is in stock but not selected in the GUI.", COLOR_INFO)
                     }
                     else {
                         ToolTip, % currentItem . "`nNot In Stock, Not Selected"
                         SetTimer, HideTooltip, -1500
-                        SendDiscordMessage(webhookURL, currentItem . " Not In Stock, Not Selected")
+                        SendDiscordMessage(webhookURL, "Item Out of Stock", currentItem . " was not in stock.", COLOR_INFO)
                     }
                     if (UINavigationFix) {
                         uiUniversal(3140, 1, 1)
@@ -764,7 +777,7 @@ quickDetectEgg(buyColor, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2Rati
         uiUniversal(5, 1, 1)
         ToolTip, Error In Detection
         SetTimer, HideTooltip, -1500
-        SendDiscordMessage(webhookURL, "Failed To Detect Any Egg [Error]" . (PingSelected ? " <@" . discordUserID . ">" : ""))
+        SendDiscordMessage(webhookURL, "Egg Detection Error", "Failed to detect any egg after 5 attempts.", COLOR_ERROR, PingSelected)
     }
 
 }
@@ -833,9 +846,9 @@ quickDetect(color1, color2, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2R
                 uiUniversal(50, 0, 1, 1)
                 Sleep, 50
                 if (ping)
-                    SendDiscordMessage(webhookURL, "Bought " . currentItem . ". <@" . discordUserID . ">")
+                    SendDiscordMessage(webhookURL, "Item Purchased", "Successfully bought " . currentItem . ".", COLOR_SUCCESS, ping)
                 else
-                    SendDiscordMessage(webhookURL, "Bought " . currentItem . ".")
+                    SendDiscordMessage(webhookURL, "Item Purchased", "Successfully bought " . currentItem . ".", COLOR_SUCCESS)
             }
         }
     }
@@ -850,9 +863,9 @@ quickDetect(color1, color2, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2R
             uiUniversal(500, 1, 1)
             Sleep, 50
             if (ping)
-                SendDiscordMessage(webhookURL, "Bought " . currentItem . ". <@" . discordUserID . ">")
+                SendDiscordMessage(webhookURL, "Item Purchased", "Successfully bought " . currentItem . ".", COLOR_SUCCESS, ping)
             else
-                SendDiscordMessage(webhookURL, "Bought " . currentItem . ".")
+                SendDiscordMessage(webhookURL, "Item Purchased", "Successfully bought " . currentItem . ".", COLOR_SUCCESS)
         }
         if (!stock) {
             if (UINavigationFix) {
@@ -861,7 +874,7 @@ quickDetect(color1, color2, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2R
             else {
                 uiUniversal(1105, 1, 1)
             }
-            SendDiscordMessage(webhookURL, currentItem . " Not In Stock.")  
+            SendDiscordMessage(webhookURL, "Item Out of Stock", currentItem . " was not in stock.", COLOR_INFO)  
         }
     }
 
@@ -1833,7 +1846,7 @@ StartScanMultiInstance:
         Return
     }
 
-    SendDiscordMessage(webhookURL, "Macro started.")
+    SendDiscordMessage(webhookURL, "Macro Started", "The macro has been initialized.", COLOR_INFO)
 
     if (MultiInstanceMode) {
         MsgBox, 1, Multi-Instance Mode, % "You have " . windowIDS.MaxIndex() . " instances open. (Instance ID's: " . idDisplay . ")`nPress OK to start the macro."
@@ -1894,7 +1907,7 @@ StartScanMultiInstance:
                     instanceNumber := window
                     ToolTip, % "Running Cycle On Instance " . window
                     SetTimer, HideTooltip, -1500
-                    SendDiscordMessage(webhookURL, "***Instance " . instanceNumber . "***")
+                    SendDiscordMessage(webhookURL, "Running Instance " . instanceNumber, "Now running automations on instance #" . instanceNumber, COLOR_INFO)
                     WinActivate, % "ahk_id " . currentWindow
                     Sleep, 200
                     SafeClickRelative(midX, midY)
@@ -1915,7 +1928,7 @@ StartScanMultiInstance:
             if (cycleFinished) {
                 WinActivate, % "ahk_id " . firstWindow
                 cycleCount++
-                SendDiscordMessage(webhookURL, "[**CYCLE " . cycleCount . " COMPLETED**]")
+                SendDiscordMessage(webhookURL, "Cycle " . cycleCount . " Completed", "All tasks for the current cycle have finished.", COLOR_COMPLETED)
                 cycleFinished := 0
                 if (!MultiInstanceMode) {
                     SetTimer, AutoReconnect, 5000
@@ -2035,7 +2048,7 @@ AutoBuyHoney:
     }
         if (honeyShopFailed && Mod(currentMinute, 5) = 0 && currentMinute != lastHoneyRetryMinute) {
             lastHoneyRetryMinute := currentMinute
-            SendDiscordMessage(webhookURL, "**[HONEY RETRY]**")
+            SendDiscordMessage(webhookURL, "Retrying Honey Shop", "Attempting to run the honey shop cycle again after a previous failure.", COLOR_WARNING)
             SetTimer, PushBuyHoney, -8000
         }
 Return
@@ -2331,7 +2344,7 @@ AutoReconnect:
         Run, % privateServerLink
         ToolTip, Attempting To Reconnect
         SetTimer, HideTooltip, -5000
-        SendDiscordMessage(webhookURL, "Lost connection or macro errored, attempting to reconnect..." . (PingSelected ? " <@" . discordUserID . ">" : ""))
+        SendDiscordMessage(webhookURL, "Reconnecting...", "Lost connection or macro errored, attempting to reconnect to the server.", COLOR_WARNING, PingSelected)
         sleepAmount(15000, 30000)
         SetTimer, CheckLoadingScreen, 5000
     }
@@ -2353,7 +2366,7 @@ CheckLoadingScreen:
     else {
         ToolTip, Rejoined Successfully
         sleepAmount(10000, 20000)
-        SendDiscordMessage(webhookURL, "Successfully reconnected to server." . (PingSelected ? " <@" . discordUserID . ">" : ""))
+        SendDiscordMessage(webhookURL, "Reconnected Successfully", "Successfully reconnected to the server and resuming macro.", COLOR_SUCCESS, PingSelected)
         Sleep, 200
         Gosub, StartScanMultiInstance
     }
@@ -2490,7 +2503,7 @@ EggShopPath:
     hotbarController(1, 0, "2")
     sleepAmount(100, 1000)
     SafeClickRelative(midX, midY)
-    SendDiscordMessage(webhookURL, "**[Egg Cycle]**")
+    SendDiscordMessage(webhookURL, "Egg Cycle", "Starting egg buying cycle.", COLOR_INFO)
     Sleep, 800
 
     ; egg 1 sequence
@@ -2531,7 +2544,7 @@ EggShopPath:
     sleepAmount(1250, 2500)
     uiUniversal("11110")
     Sleep, 100
-    SendDiscordMessage(webhookURL, "**[Eggs Completed]**")
+    SendDiscordMessage(webhookURL, "Eggs Completed", "Finished the egg buying cycle.", COLOR_COMPLETED)
 
     if (AutoAlign) {
         GoSub, cameraChange
@@ -2557,19 +2570,19 @@ SeedShopPath:
     uiUniversal("1111020")
     sleepAmount(100, 1000)
     Send, {e}
-    SendDiscordMessage(webhookURL, "**[Seed Cycle]**")
+    SendDiscordMessage(webhookURL, "Seed Cycle", "Starting seed buying cycle.", COLOR_INFO)
     sleepAmount(2500, 5000)
     ; checks for the shop opening up to 5 times to ensure it doesn't fail
     Loop, 5 {
         if (simpleDetect(0x00CCFF, 10, 0.54, 0.20, 0.65, 0.325)) {
             ToolTip, Seed Shop Opened
             SetTimer, HideTooltip, -1500
-            SendDiscordMessage(webhookURL, "Seed Shop Opened.")
+            SendDiscordMessage(webhookURL, "Seed Shop Status", "Seed Shop Opened.", COLOR_INFO)
             Sleep, 200
             uiUniversal("3331114433331114405550555", 0)
             Sleep, 100
             buyUniversal("seed")
-            SendDiscordMessage(webhookURL, "Seed Shop Closed.")
+            SendDiscordMessage(webhookURL, "Seed Shop Status", "Seed Shop Closed.", COLOR_INFO)
             seedsCompleted = 1
         }
         if (seedsCompleted) {
@@ -2580,7 +2593,7 @@ SeedShopPath:
 
     closeShop("seed", seedsCompleted)
 
-    SendDiscordMessage(webhookURL, "**[Seeds Completed]**")
+    SendDiscordMessage(webhookURL, "Seeds Completed", "Finished the seed buying cycle.", COLOR_COMPLETED)
 
 Return
 
@@ -2598,19 +2611,19 @@ GearShopPath:
     Send, {e}
     sleepAmount(1500, 5000)
     dialogueClick("gear")
-    SendDiscordMessage(webhookURL, "**[Gear Cycle]**")
+    SendDiscordMessage(webhookURL, "Gear Cycle", "Starting gear buying cycle.", COLOR_INFO)
     sleepAmount(2500, 5000)
     ; checks for the shop opening up to 5 times to ensure it doesn't fail
     Loop, 5 {
         if (simpleDetect(0x00CCFF, 10, 0.54, 0.20, 0.65, 0.325)) {
             ToolTip, Gear Shop Opened
             SetTimer, HideTooltip, -1500
-            SendDiscordMessage(webhookURL, "Gear Shop Opened.")
+            SendDiscordMessage(webhookURL, "Gear Shop Status", "Gear Shop Opened.", COLOR_INFO)
             Sleep, 200
             uiUniversal("3331114433331114405550555", 0)
             Sleep, 100
             buyUniversal("gear")
-            SendDiscordMessage(webhookURL, "Gear Shop Closed.")
+            SendDiscordMessage(webhookURL, "Gear Shop Status", "Gear Shop Closed.", COLOR_INFO)
             gearsCompleted = 1
         }
         if (gearsCompleted) {
@@ -2626,7 +2639,7 @@ GearShopPath:
     Gosub, zoomAlignment
 
     hotbarController(0, 1, "0")
-    SendDiscordMessage(webhookURL, "**[Gears Completed]**")
+    SendDiscordMessage(webhookURL, "Gears Completed", "Finished the gear buying cycle.", COLOR_COMPLETED)
 
 Return
 
@@ -2648,22 +2661,22 @@ CosmeticShopPath:
     sleepAmount(100, 1000)
     Send, {e}
     sleepAmount(2500, 5000)
-    SendDiscordMessage(webhookURL, "**[Cosmetic Cycle]**")
+    SendDiscordMessage(webhookURL, "Cosmetic Cycle", "Starting cosmetic buying cycle.", COLOR_INFO)
     ; checks for the shop opening up to 5 times to ensure it doesn't fail
     Loop, 5 {
         if (simpleDetect(0x00CCFF, 10, 0.61, 0.182, 0.764, 0.259)) {
             ToolTip, Cosmetic Shop Opened
             SetTimer, HideTooltip, -1500
-            SendDiscordMessage(webhookURL, "Cosmetic Shop Opened.")
+            SendDiscordMessage(webhookURL, "Cosmetic Shop Status", "Cosmetic Shop Opened.", COLOR_INFO)
             Sleep, 200
             for index, item in cosmeticItems {
                 label := StrReplace(item, " ", "")
                 currentItem := cosmeticItems[A_Index]
                 Gosub, %label%
-                SendDiscordMessage(webhookURL, "Bought " . currentItem . )
+                SendDiscordMessage(webhookURL, "Cosmetic Purchased", "Bought " . currentItem, COLOR_SUCCESS)
                 Sleep, 100
             }
-            SendDiscordMessage(webhookURL, "Cosmetic Shop Closed.")
+            SendDiscordMessage(webhookURL, "Cosmetic Shop Status", "Cosmetic Shop Closed.", COLOR_INFO)
             cosmeticsCompleted = 1
         }
         if (cosmeticsCompleted) {
@@ -2677,7 +2690,7 @@ CosmeticShopPath:
         uiUniversal("111114150320")
     }
     else {
-        SendDiscordMessage(webhookURL, "Failed To Detect Cosmetic Shop Opening [Error]" . (PingSelected ? " <@" . discordUserID . ">" : ""))
+        SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect Cosmetic Shop opening.", COLOR_ERROR, PingSelected)
         ; failsafe
         uiUniversal("11114111350")
         Sleep, 50
@@ -2685,7 +2698,7 @@ CosmeticShopPath:
     }
 
     hotbarController(0, 1, "0")
-    SendDiscordMessage(webhookURL, "**[Cosmetics Completed]**")
+    SendDiscordMessage(webhookURL, "Cosmetics Completed", "Finished the cosmetic buying cycle.", COLOR_COMPLETED)
 
 Return
 
@@ -2716,7 +2729,7 @@ HoneyShopPath:
     Sleep, 2500
     SafeClickRelative(0.64, 0.50)
     Sleep, 200
-    SendDiscordMessage(webhookURL, "**[HONEY CYCLE]**")
+    SendDiscordMessage(webhookURL, "Honey Cycle", "Starting honey buying cycle.", COLOR_INFO)
     Sleep, % FastMode ? 2500 : 5000
 
      ; detect shop open (up to 5 tries)
@@ -2725,14 +2738,14 @@ HoneyShopPath:
             shopOpened := true
             ToolTip, Honey Shop Opened
             SetTimer, HideTooltip, -1500
-            SendDiscordMessage(webhookURL, "Honey Shop Opened.")
+            SendDiscordMessage(webhookURL, "Honey Shop Status", "Honey Shop Opened.", COLOR_INFO)
             Break
         }
         Sleep, 2000
     }
 
     if (!shopOpened) {
-        SendDiscordMessage(webhookURL, "Failed To Detect Honey Shop Opening [Error]" (PingSelected ? " <@" . discordUserID . ">" : "") )
+        SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect Honey Shop opening.", COLOR_ERROR, PingSelected)
         uiUniversal("63636362626263616161616363636262626361616161606561646056")
 	honeyShopFailed := true
     if (AutoAlign) {
@@ -2802,7 +2815,7 @@ HoneyShopPath:
         Sleep, 100
     }
 
-    SendDiscordMessage(webhookURL, "Honey Shop Closed.")
+    SendDiscordMessage(webhookURL, "Honey Shop Status", "Honey Shop Closed.", COLOR_INFO)
 
     honeyCompleted := true
 
@@ -2814,7 +2827,7 @@ HoneyShopPath:
         Sleep, 80
         Send, {Escape}
         Sleep, 50
-        SendDiscordMessage(webhookURL, "**[HONEY COMPLETED]**")
+        SendDiscordMessage(webhookURL, "Honey Completed", "Finished the honey buying cycle.", COLOR_COMPLETED)
     }
 			Sleep, % FastMode ? 150 : 1500
     if (AutoAlign) {
@@ -2894,7 +2907,7 @@ AutoHoneyPath:
 
     WinActivate, ahk_exe RobloxPlayerBeta.exe
     Sleep, 100
-    SendDiscordMessage(webhookURL, "**[HONEY COMPRESS CYCLE]**")
+    SendDiscordMessage(webhookURL, "Honey Compress Cycle", "Starting honey compress cycle.", COLOR_INFO)
     uiUniversal("616161616062606")
     Sleep, % FastMode ? 500 : 2500
     Send, {d down}
@@ -2951,7 +2964,7 @@ AutoHoneyPath:
     Send, {2}
     Sleep, % FastMode ? 100 : 200
     uiUniversal("63636363636161616160")
-    SendDiscordMessage(webhookURL, "**[HONEY COMPRESS COMPLETE]**")
+    SendDiscordMessage(webhookURL, "Honey Compress Complete", "Finished the honey compress cycle.", COLOR_COMPLETED)
     autoHoneyCompleted := true
 
     TrackHoneyCycle()
@@ -2962,8 +2975,8 @@ TrackHoneyCycle()
 
     honeyCount += 30
 
-    SendDiscordMessage(webhookURL, "**[Honey Compress]** +30 honey collected")
-    SendDiscordMessage(webhookURL, "**[Honey Compress]** Total honey collected: " . honeyCount)
+    SendDiscordMessage(webhookURL, "Honey Compressed", "+30 honey collected.", COLOR_SUCCESS)
+    SendDiscordMessage(webhookURL, "Total Honey", "Total honey collected so far: " . honeyCount, COLOR_INFO)
 }
 
         Sleep, 120          ; in case a robux prompt
@@ -3016,7 +3029,7 @@ CraftShopUiFix() {
 }
 
     WinActivate, ahk_exe RobloxPlayerBeta.exe
-    SendDiscordMessage(webhookURL, "**[SEED CRAFTING CYCLE]**.")
+    SendDiscordMessage(webhookURL, "Seed Crafting Cycle", "Starting seed crafting cycle.", COLOR_INFO)
     Sleep, 100
     uiUniversal("1111020")
     Sleep, % FastMode ? 500 : 2500
@@ -3039,20 +3052,20 @@ Loop, 5 {
             ToolTip, Seed Crafter Opened
             SetTimer, HideTooltip, -1500
             seedCraftShopOpened := true
-            SendDiscordMessage(webhookURL, "Seed Crafter Opened.")
+            SendDiscordMessage(webhookURL, "Seed Crafter Status", "Seed Crafter Opened.", COLOR_INFO)
 	    break
 	}
         else if (simpleDetect(0xA3014D, 15, 0.54, 0.20, 0.65, 0.325)) {
             ToolTip, Seed Crafter Opened
             SetTimer, HideTooltip, -1500
             seedCraftShopOpened := true
-            SendDiscordMessage(webhookURL, "Seed Crafter Opened.")
+            SendDiscordMessage(webhookURL, "Seed Crafter Status", "Seed Crafter Opened.", COLOR_INFO)
 	    break
 	}
 }
 
     if (!seedCraftShopOpened) {
-        SendDiscordMessage(webhookURL, "Failed To Detect Seed Crafter Opening [Error]" (PingSelected ? " <@" . discordUserID . ">" : "") )
+        SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect Seed Crafter opening.", COLOR_ERROR, PingSelected)
         uiUniversal("63636362626263616161616363636262626361616161606561646056")
 	seedCraftShopFailed := true
     if (AutoAlign) {
@@ -3088,7 +3101,7 @@ if (seedCraftActionQueue.Length() > 0) {
 
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -1200000 
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3116,7 +3129,7 @@ if (seedCraftActionQueue.Length() > 0) {
 
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -600000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3144,7 +3157,7 @@ if (seedCraftActionQueue.Length() > 0) {
 
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -960000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3184,7 +3197,7 @@ if (seedCraftActionQueue.Length() > 0) {
 
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -1200000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3212,7 +3225,7 @@ if (seedCraftActionQueue.Length() > 0) {
 
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -1500000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3240,7 +3253,7 @@ if (seedCraftActionQueue.Length() > 0) {
 
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -900000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3276,7 +3289,7 @@ if (seedCraftActionQueue.Length() > 0) {
 
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -1800000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3322,7 +3335,7 @@ if (seedCraftActionQueue.Length() > 0) {
 
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -2700000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3333,7 +3346,7 @@ if (seedCraftActionQueue.Length() > 0) {
 	Send, {2}
     Sleep, % FastMode ? 100 : 200
     uiUniversal("63636363636161616160")
-    SendDiscordMessage(webhookURL, "**[SEED CRAFTING COMPLETE]**")
+    SendDiscordMessage(webhookURL, "Seed Crafting Complete", "Finished the seed crafting cycle.", COLOR_COMPLETED)
     Sleep, % FastMode ? 100 : 200
     if (AutoAlign) {
         GoSub, cameraChange
@@ -3374,7 +3387,7 @@ if (bearCraftActionQueue.Length() = 0) {
     bearCraftShopFailed := false
 
     WinActivate, ahk_exe RobloxPlayerBeta.exe
-    SendDiscordMessage(webhookURL, "**[BEAR CRAFTING CYCLE]**")
+    SendDiscordMessage(webhookURL, "Bear Crafting Cycle", "Starting bear crafting cycle.", COLOR_INFO)
     Sleep, 100
     uiUniversal("1111020")
     Sleep, % FastMode ? 500 : 2500
@@ -3401,20 +3414,20 @@ Loop, 5 {
             ToolTip, Seed Crafter Opened
             SetTimer, HideTooltip, -1500
             bearCraftShopOpened := true
-            SendDiscordMessage(webhookURL, "Seed Crafter Opened.")
+            SendDiscordMessage(webhookURL, "Bear Crafter Status", "Bear Crafter Opened.", COLOR_INFO)
 	    break
 	}
         else if (simpleDetect(0xA3014D, 15, 0.54, 0.20, 0.65, 0.325)) {
             ToolTip, Seed Crafter Opened
             SetTimer, HideTooltip, -1500
             bearCraftShopOpened := true
-            SendDiscordMessage(webhookURL, "Seed Crafter Opened.")
+            SendDiscordMessage(webhookURL, "Bear Crafter Status", "Bear Crafter Opened.", COLOR_INFO)
 	    break
 	}
 }
 
     if (!bearCraftShopOpened) {
-        SendDiscordMessage(webhookURL, "Failed To Detect Bear Crafter Opening [Error]" (PingSelected ? " <@" . discordUserID . ">" : "") )
+        SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect Bear Crafter opening.", COLOR_ERROR, PingSelected)
         uiUniversal("63636362626263616161616363636262626361616161606561646056")
 	bearCraftShopFailed := true
     if (AutoAlign) {
@@ -3473,7 +3486,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3516,7 +3529,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3559,7 +3572,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3592,7 +3605,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3635,7 +3648,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3678,7 +3691,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3705,7 +3718,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -900000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3732,7 +3745,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -300000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3759,7 +3772,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -1800000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3778,7 +3791,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -1800000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3797,7 +3810,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -7200000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3832,7 +3845,7 @@ if (bearCraftActionQueue.Length() > 0) {
 
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -14400000
-	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
@@ -3844,7 +3857,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Send, {2}
     Sleep, % FastMode ? 100 : 200
     uiUniversal("63636363636161616160")
-    SendDiscordMessage(webhookURL, "**[BEAR CRAFTING COMPLETED]**")
+    SendDiscordMessage(webhookURL, "Bear Crafting Complete", "Finished the bear crafting cycle.", COLOR_COMPLETED)
     Sleep, % FastMode ? 100 : 200
     if (AutoAlign) {
         GoSub, cameraChange
@@ -4027,7 +4040,7 @@ Return
 Quit:
 
     PauseMacro(1)
-    SendDiscordMessage(webhookURL, "Macro reloaded.")
+    SendDiscordMessage(webhookURL, "Macro reloaded.", "The script is being reloaded.", COLOR_INFO)
     Reload ; ahk built in reload
 
 Return
@@ -4036,7 +4049,7 @@ Return
 F7::
 
     PauseMacro(1)
-    SendDiscordMessage(webhookURL, "Macro reloaded.")
+    SendDiscordMessage(webhookURL, "Macro reloaded.", "The script is being reloaded via hotkey.", COLOR_INFO)
     Reload ; ahk built in reload
 
 Return
