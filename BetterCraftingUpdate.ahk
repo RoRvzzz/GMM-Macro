@@ -61,13 +61,15 @@ global seedCraftingLocked := 0
 global honeyShopFailed := false
 
 global actionQueue := []
+global seedCraftActionQueue := []
+global bearCraftActionQueue := []
 
 settingsFile := A_ScriptDir "\settings.ini"
 mainDir := A_ScriptDir . "\Images\"
 subTabHoneyPath := mainDir . "rbx background honey tab.PNG"
 subTabSeedPath  := mainDir . "background seedcaft subtab.PNG"
 subTabBearPath  := mainDir . "background bearcraft subtab.PNG"
-debugBoxPngPath := mainDir . "debugbox.png"
+
 
 honeyItems := ["A", "B", "C"]
 seedCraftingItems := ["X", "Y"]
@@ -118,9 +120,20 @@ gearScroll_1440p_125 := [1, 3, 4, 6, 8, 9, 12, 12]
 ; http functions
 
 SendDiscordMessage(webhookURL, message) {
+    nowUTC := A_NowUTC
 
-    FormatTime, messageTime, , hh:mm:ss tt
-    fullMessage := "[" . messageTime . "] " . message
+    year  := SubStr(nowUTC, 1, 4)
+    month := SubStr(nowUTC, 5, 2)
+    day   := SubStr(nowUTC, 7, 2)
+    hour  := SubStr(nowUTC, 9, 2)
+    min   := SubStr(nowUTC, 11, 2)
+    sec   := SubStr(nowUTC, 13, 2)
+
+    epochStart := "19700101000000"
+    EnvSub, nowUTC, %epochStart%, seconds
+    unixTime := nowUTC
+
+    fullMessage := "<t:" . unixTime . ":T> " . message
 
     json := "{""content"": """ . fullMessage . """}"
     whr := ComObjCreate("WinHttp.WinHttpRequest.5.1")
@@ -138,7 +151,6 @@ SendDiscordMessage(webhookURL, message) {
     } catch {
         return
     }
-
 }
 
 checkValidity(url, msg := 0, mode := "nil") {
@@ -245,29 +257,6 @@ showPopupMessage(msgText := "nil", duration := 2000) {
 
 }
 
-DonateResponder(ctrlName) {
-
-    MsgBox, 1, Disclaimer, 
-    (
-    Your browser will open with a link to a roblox gamepass once you press OK.
-    - Feel free to check the code, there are no malicious links.
-    )
-
-    IfMsgBox, OK
-        if (ctrlName = "Donate100")
-            Run, https://www.roblox.com/game-pass/1197306369/100-Donation
-        else if (ctrlName = "Donate500")
-            Run, https://www.roblox.com/game-pass/1222540123/500-Donation
-        else if (ctrlName = "Donate1000")
-            Run, https://www.roblox.com/game-pass/1222262383/1000-Donation
-        else if (ctrlName = "Donate2500")
-            Run, https://www.roblox.com/game-pass/1222306189/2500-Donation
-        else if (ctrlName = "Donate10000")
-            Run, https://www.roblox.com/game-pass/1220930414/10-000-Donation
-        else
-            return
-
-}
 
 ; mouse functions
 
@@ -793,8 +782,6 @@ simpleDetect(colorInBGR, variation, x1Ratio := 0.0, y1Ratio := 0.0, x2Ratio := 1
     x2 := winX + Round(x2Ratio * winW)
     y2 := winY + Round(y2Ratio * winH)
 
-    DrawDebugBox(x1, y1, x2, y2)
-
     PixelSearch, FoundX, FoundY, x1, y1, x2, y2, colorInBGR, variation, Fast
     if (ErrorLevel = 0) {
         return true
@@ -1117,8 +1104,6 @@ IniRead, ManualBearCraftLock, %settingsFile%, Main, ManualBearCraftLock, 0
 Gui, Add, Edit, x369 y132 w36 h18 vManualBearCraftLock gUpdateCraftLock -Theme cBlack, %ManualBearCraftLock%
 
 
-   
-    
     Gui, Tab, 6
     
     ; Invisible hotspots (replacing buttons)
@@ -1160,9 +1145,28 @@ Gui, Add, Edit, x369 y132 w36 h18 vManualBearCraftLock gUpdateCraftLock -Theme c
     ; Gui, Add, Radio, x35 y300 gUpdateResolution c708090 %opt4%, 1280x720 100`%
 
 
+    Gui, Tab, 7
+    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro background credit.png"
+    ; Set the font to blue, underlined
+    Gui, Font, cBlue underline
+
+    ; Add the text as a clickable link with transparent background
+    Gui, Add, Text, x355 y345 w150 BackgroundTrans gOpenLink, GAG MODED MACROS DISCORD `njoin for update and bugreport
+
+    ; Reset the font so other text isn't underlined
+    Gui, Font, norm
 
 
 
+    Gui, Show, w520 h425, GAG MACRO Yark Spade Crafting update +xTazerTx's GIGA UI Rework
+
+   
+
+Return
+
+OpenLink:
+    Run, https://discord.gg/gagmacros  ; <-- replace with your actual link
+return
 
 
         IniRead, PingSelected, %settingsFile%, Main, PingSelected, 0
@@ -1230,29 +1234,11 @@ Gui, Add, Edit, x369 y132 w36 h18 vManualBearCraftLock gUpdateCraftLock -Theme c
 Gosub, ShowHoneySubTab
 
 
-    Gui, Tab, 7
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro background credit.png"
-    ; Set the font to blue, underlined
-    Gui, Font, cBlue underline
-
-    ; Add the text as a clickable link with transparent background
-    Gui, Add, Text, x355 y345 w150 BackgroundTrans gOpenLink, GAG MODED MACROS DISCORD `njoin for update and bugreport
-
-    ; Reset the font so other text isn't underlined
-    Gui, Font, norm
-
-
-
     Gui, Show, w520 h425, GAG MACRO Yark Spade Crafting update +xTazerTx's GIGA UI Rework
 
    
 
 Return
-
-OpenLink:
-    Run, https://discord.gg/gagmacros  ; <-- replace with your actual link
-return
-
 
     MinimizeApp:
     Gui, Minimize
@@ -1307,7 +1293,9 @@ ShowBearSubTab:
     }
 return
 
-    
+
+
+
 
 
 
@@ -1643,12 +1631,6 @@ UpdateSettingColor:
     
 return
 
-Donate:
-
-    DonateResponder(A_GuiControl)
-    
-Return
-
 HideTooltip:
 
     ToolTip
@@ -1758,24 +1740,6 @@ GetSelectedItems() {
     return result
     
 }
-
-DrawDebugBox(x1, y1, x2, y2, debugBoxPngPath := "") {
-    Gui, DebugBox:Destroy
-    Gui, DebugBox:+AlwaysOnTop +ToolWindow -Caption +LastFound +E0x20 +Owner ; E0x20 = click-through
-    WinSet, TransColor, EEAA99, A
-    width := x2 - x1
-    height := y2 - y1
-    if (debugBoxPngPath = "") {
-        debugBoxPngPath := A_ScriptDir . "\Images\debugbox.png"
-    }
-    Gui, DebugBox:Add, Picture, x0 y0 +BackgroundTrans, %debugBoxPngPath%
-    Gui, DebugBox:Show, x%x1% y100 NoActivate
-    SetTimer, RemoveDebugBox, -1000  ; Auto remove after 1 second
-}
-
-RemoveDebugBox:
-    Gui, DebugBox:Destroy
-Return
 
 SaveAutoHoney:
     Gui, Submit, NoHide
@@ -2292,7 +2256,23 @@ AutoReconnect:
 
     global actionQueue
 
-    if ((simpleDetect(0x302927, 0, 0.3988, 0.3548, 0.6047, 0.6674) || simpleDetect(0x3D3B39, 0, 0.3988, 0.3548, 0.6047, 0.6674)) && simpleDetect(0xFFFFFF, 0, 0.3988, 0.3548, 0.6047, 0.6674) && privateServerLink != "") {
+    shouldReconnect := false
+
+    Loop, 3 {
+        detectedColor1 := simpleDetect(0x302927, 0, 0.3988, 0.3548, 0.6047, 0.6674)
+        detectedColor2 := simpleDetect(0x3D3B39, 0, 0.3988, 0.3548, 0.6047, 0.6674)
+        detectedWhite := simpleDetect(0xFFFFFF, 0, 0.3988, 0.3548, 0.6047, 0.6674)
+
+        if ((detectedColor1 || detectedColor2) && detectedWhite && privateServerLink != "") {
+		shouldReconnect := true
+        } else {
+            break
+        }
+
+        Sleep, 2000
+    }
+
+    if (shouldReconnect) {
         started := 0
         actionQueue := []
         SetTimer, AutoReconnect, Off
@@ -2309,6 +2289,7 @@ AutoReconnect:
         SetTimer, CheckLoadingScreen, 5000
     }
 
+
 Return
 
 CheckLoadingScreen:
@@ -2324,7 +2305,7 @@ CheckLoadingScreen:
     }
     else {
         ToolTip, Rejoined Successfully
-        sleepAmount(5000, 10000)
+        sleepAmount(10000, 20000)
         SendDiscordMessage(webhookURL, "Successfully reconnected to server." . (PingSelected ? " <@" . discordUserID . ">" : ""))
         Sleep, 200
         Gosub, StartScanMultiInstance
@@ -2962,6 +2943,19 @@ if (cycleCount = 0 && ManualSeedCraftLock > 0) {
 Return
 }
 
+selectedSeedCraftingItems := []
+Loop, 12 {
+    lastRanItem := currentItem 
+    IniRead, value, %A_ScriptDir%\settings.ini, SeedCrafting, Item%A_Index%, 0
+    if (value = 1)
+        selectedSeedCraftingItems.Push(A_Index)
+}
+
+if (seedCraftActionQueue.Length() = 0) {
+    for index, item in selectedSeedCraftingItems
+        seedCraftActionQueue.Push(item)
+}
+
     seedCraftCompleted := false
     seedCraftShopOpened := false
     seedCraftShopFailed := false
@@ -2990,7 +2984,7 @@ CraftShopUiFix() {
     Send, {c}
     Sleep, % FastMode ? 100 : 300
     Send, {e}
-    Sleep, % FastMode ? 100 : 300
+    Sleep, % FastMode ? 500 : 1500
     Send, {e}
     Sleep, % FastMode ? 100 : 300
 Loop, 5 {
@@ -3028,16 +3022,10 @@ Loop, 5 {
         Return
     }
 
-selectedSeedCraftItems := []
-Loop, 12 {
-    lastRanItem := currentItem 
-    IniRead, value, %A_ScriptDir%\settings.ini, SeedCrafting, Item%A_Index%, 0
-    if (value = 1)
-        selectedSeedCraftItems.Push(A_Index)
-}
+if (seedCraftActionQueue.Length() > 0) {
+    currentCraftingItem := seedCraftActionQueue[1]
 
-For index, item in selectedSeedCraftItems {
-    if (item = 1) {
+    if (currentCraftingItem = 1) {
 	CraftShopUiFix()
 	currentItem := "Crafters Seed Pack"
         uiUniversal("333333354545054545505")
@@ -3045,17 +3033,19 @@ For index, item in selectedSeedCraftItems {
 	Sleep, 100
 	searchItem("pack")
 	Sleep, 100
-	ClickFirstFour()
+	ClickSeedFilter()
+	Sleep, 100
+	ClickFirstEight()
 	Sleep, 500
 	closeRobuxPrompt()
 
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -1200000 
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 2) {
+    if (currentCraftingItem = 2) {
 	CraftShopUiFix()
 	currentItem := "Manuka Flower"
         uiUniversal("33333333335454545450545505")
@@ -3080,10 +3070,10 @@ For index, item in selectedSeedCraftItems {
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -600000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 3) {
+    if (currentCraftingItem = 3) {
 	CraftShopUiFix()
 	currentItem := "Dandelion"
         uiUniversal("3333333333545454545450545505")
@@ -3108,10 +3098,10 @@ For index, item in selectedSeedCraftItems {
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -960000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 4) {
+    if (currentCraftingItem = 4) {
 
         uiUniversal("33333333")
         Sleep, % FastMode ? 100 : 300
@@ -3148,10 +3138,10 @@ For index, item in selectedSeedCraftItems {
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -1200000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 5) {
+    if (currentCraftingItem = 5) {
 	CraftShopUiFix()
 	currentItem := "Honeysuckle"
         uiUniversal("33333333335454545454545450545505")
@@ -3176,10 +3166,10 @@ For index, item in selectedSeedCraftItems {
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -1500000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 6) {
+    if (currentCraftingItem = 6) {
 	CraftShopUiFix()
 	currentItem := "Bee Balm"
         uiUniversal("3333333333545454545454545450545505")
@@ -3204,10 +3194,10 @@ For index, item in selectedSeedCraftItems {
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -900000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 7) {
+    if (currentCraftingItem = 7) {
 	CraftShopUiFix()
 	currentItem := "Nectar Thorn"
         uiUniversal("333333333354545454545454545450545505")
@@ -3240,10 +3230,10 @@ For index, item in selectedSeedCraftItems {
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -1800000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 8) {
+    if (currentCraftingItem = 8) {
 	CraftShopUiFix()
 	currentItem := "Suncoil"
         uiUniversal("33333333335454545454545454545450545505")
@@ -3286,8 +3276,8 @@ For index, item in selectedSeedCraftItems {
 	seedCraftingLocked := 1
 	SetTimer, UnlockSeedCraft, -2700000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
 }
     seedCraftCompleted := true
@@ -3319,6 +3309,19 @@ if (cycleCount = 0 && ManualBearCraftLock > 0) {
 Return
 }
 
+selectedBearCraftingItems := []
+Loop, 12 {
+    lastRanItem := currentItem 
+    IniRead, value, %A_ScriptDir%\settings.ini, BearCrafting, Item%A_Index%, 0
+    if (value = 1)
+        selectedBearCraftingItems.Push(A_Index)
+}
+
+if (bearCraftActionQueue.Length() = 0) {
+    for index, item in selectedBearCraftingItems
+        bearCraftActionQueue.Push(item)
+}
+
     bearCraftCompleted := false
     bearCraftShopOpened := false
     bearCraftShopFailed := false
@@ -3343,7 +3346,7 @@ Return
     Send, {c}
     Sleep, % FastMode ? 100 : 300
     Send, {e}
-    Sleep, % FastMode ? 100 : 300
+    Sleep, % FastMode ? 500 : 1500
     Send, {e}
     Sleep, % FastMode ? 100 : 300
 Loop, 5 {
@@ -3381,15 +3384,10 @@ Loop, 5 {
         Return
     }
 
-selectedBearCraftItems := []
-Loop, 12 {
-    IniRead, value, %A_ScriptDir%\settings.ini, BearCrafting, Item%A_Index%, 0
-    if (value = 1)
-        selectedBearCraftItems.Push(A_Index)
-}
+if (bearCraftActionQueue.Length() > 0) {
+    currentCraftingItem := bearCraftActionQueue[1]
 
-For index, item in selectedBearCraftItems {
-    if (item = 1) {
+    if (currentCraftingItem = 1) {
 	CraftShopUiFix()
 	currentItem := "Tropical Mist Sprinkler"
         uiUniversal("3333333545450545505")
@@ -3429,10 +3427,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 2) {
+    if (currentCraftingItem = 2) {
 	CraftShopUiFix()
 	currentItem := "Berry Blusher Sprinkler"
         uiUniversal("333333354545450545505")
@@ -3472,10 +3470,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 3) {
+    if (currentCraftingItem = 3) {
 	CraftShopUiFix()
 	currentItem := "Spice Spritzer Sprinkler"
         uiUniversal("33333335454545450545505")
@@ -3515,10 +3513,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 4) {
+    if (currentCraftingItem = 4) {
 
         uiUniversal("33333333")
         Sleep, % FastMode ? 100 : 300
@@ -3537,6 +3535,10 @@ For index, item in selectedBearCraftItems {
 	ClickFirstFour()
 	Sleep, 100
 	ClickFirstFour()
+	Sleep, 100
+	searchItem("master")
+	Sleep, 100
+	ClickFirstFour()
 	Sleep, 500
 	closeRobuxPrompt()
 	Sleep, 100
@@ -3544,10 +3546,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 5) {
+    if (currentCraftingItem = 5) {
 	CraftShopUiFix()
 	currentItem := "Flower Froster Sprinkler"
         uiUniversal("333333354545454545450545505")
@@ -3587,10 +3589,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 6) {
+    if (currentCraftingItem = 6) {
 	CraftShopUiFix()
 	currentItem := "Stalk Sprout Sprinkler"
         uiUniversal("33333335454545454545450545505")
@@ -3630,10 +3632,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 7) {
+    if (currentCraftingItem = 7) {
 	CraftShopUiFix()
 	currentItem := "Mutation Spray Choc"
         uiUniversal("3333333545454545454545450545505")
@@ -3657,10 +3659,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -900000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 8) {
+    if (currentCraftingItem = 8) {
 	CraftShopUiFix()
 	currentItem := "Mutation Spray Pollinated"
         uiUniversal("333333354545454545454545450545505")
@@ -3684,10 +3686,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -300000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 9) {
+    if (currentCraftingItem = 9) {
 	CraftShopUiFix()
 	currentItem := "Mutation Spray Shocked"
         uiUniversal("33333335454545454545454545450545505")
@@ -3711,10 +3713,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -1800000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 10) {
+    if (currentCraftingItem = 10) {
 	CraftShopUiFix()
 	currentItem := "Honey Crafters Crate"
         uiUniversal("333333354545454545454545454545054545505")
@@ -3730,10 +3732,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -1800000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 11) {
+    if (currentCraftingItem = 11) {
 	CraftShopUiFix()
 	currentItem := "Anti Bee Egg"
         uiUniversal("3333333545454545454545454545454545054545505")
@@ -3749,10 +3751,10 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -7200000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
-    if (item = 12) {
+    if (currentCraftingItem = 12) {
 	CraftShopUiFix()
 	currentItem := "Pack Bee"
         uiUniversal("333333354545454545454545454545454545450545505")
@@ -3784,8 +3786,8 @@ For index, item in selectedBearCraftItems {
 	bearCraftingLocked := 1
 	SetTimer, UnlockBearCraft, -14400000
 	SendDiscordMessage(webhookURL, "Attempted to craft " . currentItem . ".")
+        bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
-	Break
     }
 }
 
@@ -3823,7 +3825,7 @@ Return
 Cosmetic1:
 
     Sleep, 50
-    Loop, 5 {
+    Loop, 2 {
         uiUniversal("11111445000000000000")
         sleepAmount(50, 200)
     }
@@ -3833,7 +3835,7 @@ Return
 Cosmetic2:
 
     Sleep, 50
-    Loop, 5 {
+    Loop, 2 {
         uiUniversal("11111442250000000000000")
         sleepAmount(50, 200)
     }
@@ -3843,7 +3845,7 @@ Return
 Cosmetic3:
 
     Sleep, 50
-    Loop, 5 {
+    Loop, 2 {
         uiUniversal("11111442222500000000000")
         sleepAmount(50, 200)
     }
@@ -3853,7 +3855,7 @@ Return
 Cosmetic4:
 
     Sleep, 50
-    Loop, 5 {
+    Loop, 2 {
         uiUniversal("111114422224500000000000")
         sleepAmount(50, 200)
     }
@@ -3863,7 +3865,7 @@ Return
 Cosmetic5:
 
     Sleep, 50
-    Loop, 5 {
+    Loop, 2 {
         uiUniversal("111114422224150000000000")
         sleepAmount(50, 200)
     }
@@ -3873,7 +3875,7 @@ Return
 Cosmetic6:
 
     Sleep, 50
-    Loop, 5 {
+    Loop, 2 {
         uiUniversal("111114422224115000000000")
         sleepAmount(50, 200)
     }
@@ -3883,7 +3885,7 @@ Return
 Cosmetic7:
 
     Sleep, 50
-    Loop, 5 {
+    Loop, 2 {
         uiUniversal("1111144222241115000000000")
         sleepAmount(50, 200)
     }
@@ -3893,7 +3895,7 @@ Return
 Cosmetic8:
 
     Sleep, 50
-    Loop, 5 {
+    Loop, 2 {
         uiUniversal("1111144222241111500000000")
         sleepAmount(50, 200)
     }
@@ -3903,7 +3905,7 @@ Return
 Cosmetic9:
 
     Sleep, 50
-    Loop, 5 {
+    Loop, 2 {
         uiUniversal("11111442222411111500000000")
         sleepAmount(50, 200)
     }
