@@ -2240,7 +2240,6 @@ AutoReconnect:
 
     global actionQueue
 
-    reconnectAttemptCount := 0
     shouldReconnect := false
 
     Loop, 3 {
@@ -2249,7 +2248,7 @@ AutoReconnect:
         detectedWhite := simpleDetect(0xFFFFFF, 0, 0.3988, 0.3548, 0.6047, 0.6674)
 
         if ((detectedColor1 || detectedColor2) && detectedWhite && privateServerLink != "") {
-            reconnectAttemptCount += 1
+            shouldReconnect := true
         } else {
             break
         }
