@@ -123,10 +123,15 @@ global COLOR_WARNING   := 15105570  ; Orange
 global COLOR_INFO      := 3447003   ; Blue
 global COLOR_COMPLETED := 9896155   ; Purple
 
+global debugWebhookMode := 0
+
 ; http functions
 
-SendDiscordMessage(webhookURL, title, description := "", color := 3447003, doPing := false) {
-    global discordUserID, PingSelected
+SendDiscordMessage(webhookURL, title, description := "", color := 3447003, doPing := false, debugOnly := false) {
+    global discordUserID, PingSelected, debugWebhookMode
+
+    if (debugOnly && !debugWebhookMode)
+        return
 
     if (!webhookURL || InStr(webhookURL, " "))
         return
@@ -435,6 +440,8 @@ buyUniversal(itemType) {
     global indexArray := []
     global UINavigationFix
 
+    SendDiscordMessage(webhookURL, "[Debug] buyUniversal", "Starting for item type: " . itemType, COLOR_INFO, false, true)
+
     indexArray := []
     lastIndex := 0
     
@@ -457,6 +464,7 @@ buyUniversal(itemType) {
     ; buy items
     for i, index in indexArray {
         currentItem := currentSelectedArray[i]
+        SendDiscordMessage(webhookURL, "[Debug] buyUniversal", "Processing item: " . currentItem . " at calculated index " . index, COLOR_INFO, false, true)
         Sleep, 50
         uiUniversal(, 0, 1, , , , "calculate", index, "down", itemType)
         indexItem := currentSelectedArray[i]
@@ -467,6 +475,7 @@ buyUniversal(itemType) {
     }
 
     ; end
+    SendDiscordMessage(webhookURL, "[Debug] buyUniversal", "Finished. Closing UI with lastIndex: " . lastIndex, COLOR_INFO, false, true)
     Sleep, 100
     uiUniversal(, 0, 1,,,, "close", lastIndex, "up", itemType)
     Sleep, 100
@@ -2390,6 +2399,7 @@ alignment:
 
     ToolTip, Beginning Alignment
     SetTimer, HideTooltip, -5000
+    SendDiscordMessage(webhookURL, "[Debug] alignment", "Alignment process started.", COLOR_INFO, false, true)
 
     SafeClickRelative(0.5, 0.5)
     Sleep, 100
@@ -2421,6 +2431,7 @@ alignment:
 
     ToolTip, Alignment Complete
     SetTimer, HideTooltip, -1000
+    SendDiscordMessage(webhookURL, "[Debug] alignment", "Alignment process finished.", COLOR_INFO, false, true)
 
 Return
 
@@ -2508,6 +2519,7 @@ Return
 
 EggShopPath:
 
+    SendDiscordMessage(webhookURL, "[Debug] EggShopPath", "Function started.", COLOR_INFO, false, true)
     Sleep, 100
     uiUniversal("11110")
     Sleep, 100
@@ -2518,6 +2530,7 @@ EggShopPath:
     Sleep, 800
 
     ; egg 1 sequence
+    SendDiscordMessage(webhookURL, "[Debug] EggShopPath", "Starting egg 1 sequence.", COLOR_INFO, false, true)
     Send, {Up Down}
     Sleep, 1800
     Send {Up Up}
@@ -2529,6 +2542,7 @@ EggShopPath:
     quickDetectEgg(0x26EE26, 15, 0.41, 0.65, 0.52, 0.70)
     Sleep, 800
     ; egg 2 sequence
+    SendDiscordMessage(webhookURL, "[Debug] EggShopPath", "Starting egg 2 sequence.", COLOR_INFO, false, true)
     Send, {Up down}
     Sleep, 200
     Send, {Up up}
@@ -2540,6 +2554,7 @@ EggShopPath:
     quickDetectEgg(0x26EE26, 15, 0.41, 0.65, 0.52, 0.70)
     Sleep, 800
     ; egg 3 sequence
+    SendDiscordMessage(webhookURL, "[Debug] EggShopPath", "Starting egg 3 sequence.", COLOR_INFO, false, true)
     Send, {Up down}
     Sleep, 200
     Send, {Up up}
@@ -2558,6 +2573,7 @@ EggShopPath:
     SendDiscordMessage(webhookURL, "Eggs Completed", "Finished the egg buying cycle.", COLOR_COMPLETED)
 
     if (AutoAlign) {
+        SendDiscordMessage(webhookURL, "[Debug] EggShopPath", "Auto-aligning after cycle.", COLOR_INFO, false, true)
         GoSub, cameraChange
         Sleep, 100
         Gosub, zoomAlignment
@@ -2577,6 +2593,7 @@ Return
 SeedShopPath:
 
     seedsCompleted := 0
+    SendDiscordMessage(webhookURL, "[Debug] SeedShopPath", "Function started.", COLOR_INFO, false, true)
 
     uiUniversal("1111020")
     sleepAmount(100, 1000)
@@ -2585,6 +2602,7 @@ SeedShopPath:
     sleepAmount(2500, 5000)
     ; checks for the shop opening up to 5 times to ensure it doesn't fail
     Loop, 5 {
+        SendDiscordMessage(webhookURL, "[Debug] SeedShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
         if (simpleDetect(0x00CCFF, 10, 0.54, 0.20, 0.65, 0.325)) {
             ToolTip, Seed Shop Opened
             SetTimer, HideTooltip, -1500
@@ -2611,6 +2629,7 @@ Return
 GearShopPath:
 
     gearsCompleted := 0
+    SendDiscordMessage(webhookURL, "[Debug] GearShopPath", "Function started.", COLOR_INFO, false, true)
 
     hotbarController(0, 1, "0")
     uiUniversal("11110")
@@ -2626,6 +2645,7 @@ GearShopPath:
     sleepAmount(2500, 5000)
     ; checks for the shop opening up to 5 times to ensure it doesn't fail
     Loop, 5 {
+        SendDiscordMessage(webhookURL, "[Debug] GearShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
         if (simpleDetect(0x00CCFF, 10, 0.54, 0.20, 0.65, 0.325)) {
             ToolTip, Gear Shop Opened
             SetTimer, HideTooltip, -1500
@@ -2658,6 +2678,7 @@ CosmeticShopPath:
 
     ; if you are reading this please forgive this absolute garbage label
     cosmeticsCompleted := 0
+    SendDiscordMessage(webhookURL, "[Debug] CosmeticShopPath", "Function started.", COLOR_INFO, false, true)
 
     hotbarController(0, 1, "0")
     uiUniversal("11110")
@@ -2675,6 +2696,7 @@ CosmeticShopPath:
     SendDiscordMessage(webhookURL, "Cosmetic Cycle", "Starting cosmetic buying cycle.", COLOR_INFO)
     ; checks for the shop opening up to 5 times to ensure it doesn't fail
     Loop, 5 {
+        SendDiscordMessage(webhookURL, "[Debug] CosmeticShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
         if (simpleDetect(0x00CCFF, 10, 0.61, 0.182, 0.764, 0.259)) {
             ToolTip, Cosmetic Shop Opened
             SetTimer, HideTooltip, -1500
@@ -2718,6 +2740,7 @@ HoneyShopPath:
     honeyCompleted := false
     shopOpened := false
     honeyShopFailed := false
+    SendDiscordMessage(webhookURL, "[Debug] HoneyShopPath", "Function started.", COLOR_INFO, false, true)
 
     WinActivate, ahk_exe RobloxPlayerBeta.exe
     Sleep, 100
@@ -2745,6 +2768,7 @@ HoneyShopPath:
 
      ; detect shop open (up to 5 tries)
     Loop, 5 {
+        SendDiscordMessage(webhookURL, "[Debug] HoneyShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
         if ( simpleDetect(0x03FADC, 10, 0.54, 0.20, 0.65, 0.325) ) {
             shopOpened := true
             ToolTip, Honey Shop Opened
@@ -2915,6 +2939,7 @@ ClickFirstEight() {
 AutoHoneyPath:
 
     autoHoneyCompleted := false
+    SendDiscordMessage(webhookURL, "[Debug] AutoHoneyPath", "Function started.", COLOR_INFO, false, true)
 
     WinActivate, ahk_exe RobloxPlayerBeta.exe
     Sleep, 100
@@ -3008,7 +3033,8 @@ ClickFruitFilter() {
 
 AutoSeedCraftPath:
 
-if (cycleCount = 0 && ManualSeedCraftLock > 0) {
+    SendDiscordMessage(webhookURL, "[Debug] AutoSeedCraftPath", "Function started.", COLOR_INFO, false, true)
+    if (cycleCount = 0 && ManualSeedCraftLock > 0) {
 	seedCraftingLocked := 1
 	SetCraftLock("seed", ManualSeedCraftLock)
 Return
@@ -3374,7 +3400,8 @@ Return
 
 AutoBearCraftPath:
 
-if (cycleCount = 0 && ManualBearCraftLock > 0) {
+    SendDiscordMessage(webhookURL, "[Debug] AutoBearCraftPath", "Function started.", COLOR_INFO, false, true)
+    if (cycleCount = 0 && ManualBearCraftLock > 0) {
 	bearCraftingLocked := 1
 	SetCraftLock("bear", ManualBearCraftLock)
 Return
@@ -4082,3 +4109,12 @@ FileDelete, debug.txt
 Return
 
 #MaxThreadsPerHotkey, 2
+
+F9::
+    global debugWebhookMode
+    debugWebhookMode := !debugWebhookMode
+    tooltipText := "Debug Webhook Mode: " . (debugWebhookMode ? "ON" : "OFF")
+    ToolTip, %tooltipText%
+    SetTimer, HideTooltip, -1500
+    SendDiscordMessage(webhookURL, "Debug Mode Toggled", tooltipText, COLOR_WARNING)
+Return
