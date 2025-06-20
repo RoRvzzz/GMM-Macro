@@ -905,10 +905,70 @@ seedCraftingItems := ["Crafters Seed Pack", "Manuka Flower", "Dandelion", "Lumir
 
 settingsFile := A_ScriptDir "\settings.ini"
 
+Gosub, RunDiagnostics
+
 Gosub, ShowGui
 Return
 
 ; main ui
+
+RunDiagnostics:
+    SplashTextOn, 200, 30, GAG MACRO, Running diagnostics...
+    Sleep, 500 ; Give it a moment to display
+
+    errorMessages := ""
+
+    ; Check 1: Running from a temporary folder (ZIP check)
+    if InStr(A_ScriptDir, A_Temp) {
+        errorMessages .= "- Macro is running from a temporary folder. Please extract all files from the archive before running.`n"
+    }
+
+    ; Check 2: Roblox Process
+    Process, Exist, RobloxPlayerBeta.exe
+    if (!ErrorLevel) {
+        errorMessages .= "- Roblox process not found. Please open Roblox before using the macro.`n"
+    }
+
+    ; Check 3: AHK version compatibility
+    if (SubStr(A_AhkVersion, 1, 1) = "2") {
+        errorMessages .= "- This script requires AutoHotkey v1.1, but you are running v2. Please install AHK v1.1.`n"
+    } else if (A_AhkVersion < "1.1.33") {
+        errorMessages .= "- Outdated AHK v1 version (" . A_AhkVersion . ") detected. Please update to the latest v1.1 release.`n"
+    }
+
+    ; Check 5: DPI Scaling Check
+    if (A_ScreenDPI != 96 && A_ScreenDPI != 120) { ; 100% or 125%
+        errorMessages .= "- Uncommon DPI scaling detected (" . A_ScreenDPI . " DPI). Please set display scaling to 100% or 125% in Windows settings.`n"
+    }
+
+    ; Check 6: Keyboard Layout
+    hkl := DllCall("GetKeyboardLayout", "UInt", 0)
+    layoutID := hkl & 0xFFFF ; extract low word 
+    layoutHex := Format("{:04X}", layoutID)
+    if (layoutHex != "0409") { ; English (United States)
+        errorMessages .= "- Current keyboard layout is not English (US) (ID: 0x" . layoutHex . "). Please switch your keyboard layout to 'English (United States)'.`n"
+    }
+
+    ; Check 7: Screen Resolution
+    isSupported := (A_ScreenWidth = 1920 && A_ScreenHeight = 1080) || (A_ScreenWidth = 2560 && A_ScreenHeight = 1440)
+    if (!isSupported) {
+        errorMessages .= "- Unsupported screen resolution (" . A_ScreenWidth . "x" . A_ScreenHeight . "). Optimal resolutions are 1920x1080 or 2560x1440.`n"
+    }
+    
+    SplashTextOff
+    
+    if (errorMessages != "") {
+        MsgBox, 16, Diagnostic Failed, The following issues were found:`n`n%errorMessages%
+        ExitApp
+    }
+
+    ; Non-fatal Admin Check
+    if (!A_IsAdmin) {
+        MsgBox, 36, Admin Warning, Not running as admin. This may cause issues with controlling other windows.`n`nDo you want to continue anyway?
+        IfMsgBox, No
+            ExitApp
+    }
+Return
 
 ShowGui:
     Gui, Destroy
@@ -1128,7 +1188,7 @@ Gui, Add, Edit, x369 y132 w36 h18 vManualBearCraftLock gUpdateCraftLock -Theme c
     Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab Save PS Link button.PNG"
     Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab Save User ID button.PNG"
     Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab Eggs button1.PNG"
-    Gui, Add, Picture, x0 y-3 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab Pets button.PNG" 
+    Gui, Add, Picture, x0 y-3 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab Pets button.PNG"
 
 
     ; opt1 := (selectedResolution = 1 ? "Checked" : "")
