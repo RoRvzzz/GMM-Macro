@@ -1104,9 +1104,6 @@ IniRead, ManualBearCraftLock, %settingsFile%, Main, ManualBearCraftLock, 0
 Gui, Add, Edit, x369 y132 w36 h18 vManualBearCraftLock gUpdateCraftLock -Theme cBlack, %ManualBearCraftLock%
 
 
-
-    Gui, Tab, 7
-
     Gui, Tab, 6
     
     ; Invisible hotspots (replacing buttons)
@@ -1148,9 +1145,28 @@ Gui, Add, Edit, x369 y132 w36 h18 vManualBearCraftLock gUpdateCraftLock -Theme c
     ; Gui, Add, Radio, x35 y300 gUpdateResolution c708090 %opt4%, 1280x720 100`%
 
 
+    Gui, Tab, 7
+    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro background credit.png"
+    ; Set the font to blue, underlined
+    Gui, Font, cBlue underline
+
+    ; Add the text as a clickable link with transparent background
+    Gui, Add, Text, x355 y345 w150 BackgroundTrans gOpenLink, GAG MODED MACROS DISCORD `njoin for update and bugreport
+
+    ; Reset the font so other text isn't underlined
+    Gui, Font, norm
 
 
 
+    Gui, Show, w520 h425, GAG MACRO Yark Spade Crafting update +xTazerTx's GIGA UI Rework
+
+   
+
+Return
+
+OpenLink:
+    Run, https://discord.gg/gagmacros  ; <-- replace with your actual link
+return
 
 
         IniRead, PingSelected, %settingsFile%, Main, PingSelected, 0
