@@ -962,12 +962,7 @@ RunDiagnostics:
         ExitApp
     }
 
-    ; Non-fatal Admin Check
-    if (!A_IsAdmin) {
-        MsgBox, 36, Admin Warning, Not running as admin. This may cause issues with controlling other windows.`n`nDo you want to continue anyway?
-        IfMsgBox, No
-            ExitApp
-    }
+
 Return
 
 ShowGui:
