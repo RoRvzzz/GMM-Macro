@@ -1041,18 +1041,18 @@ ShowGui:
     Gui, Add, Checkbox, % "x391 y135 w12 h12 vSelectAllGears gHandleSelectAll c87CEEB " . (SelectAllGears ? "Checked" : ""), Select All Gears 
 
 
-    Loop, % gearItems.Length() {
+Loop, % gearItems.Length() {
         IniRead, gVal, %settingsFile%, Gear, Item%A_Index%, 0
-        if (A_Index > 8) {
+        if (A_Index > 7) {
             col := 373
-            idx := A_Index - 9
+            idx := A_Index - 8
             yBase := 192
         }
         else if (A_Index > 3) {
-            col := 200
+            col := 197
             idx := A_Index - 4
             yBase := 192
-        
+
         }
         else {
             col := 28
