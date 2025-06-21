@@ -965,13 +965,21 @@ RunDiagnostics:
 
 
     ; Check 7: Screen Resolution
-    isSupported := (A_ScreenWidth = 1920 && A_ScreenHeight = 1080) || (A_ScreenWidth = 2560 && A_ScreenHeight = 1440)
-    if (!isSupported) {
-        errorMessages .= "- Unsupported screen resolution (" . A_ScreenWidth . "x" . A_ScreenHeight . "). Optimal resolutions are 1920x1080 or 2560x1440.`n"
+    is16x9 := (A_ScreenWidth * 9 = A_ScreenHeight * 16)
+    if (!is16x9) {
+        errorMessages .= "- Unsupported screen resolution (" . A_ScreenWidth . "x" . A_ScreenHeight . "). A 16:9 aspect ratio is required (e.g., 1920x1080, 2560x1440).`n"
     }
     
     SplashTextOff
     
+    ; Keyboard Layout Check from diagnostic tool
+    hkl := DllCall("GetKeyboardLayout", "UInt", 0)
+    layoutID := hkl & 0xFFFF
+    layoutHex := Format("{:04X}", layoutID)
+    if (layoutHex != "0409") { ; Not English (United States)
+        MsgBox, 64, Keyboard Layout Warning, Current keyboard layout is not English (US) (ID: 0x%layoutHex%). This can sometimes cause unexpected behavior.`n`nIt is recommended to switch to an 'English (United States)' layout.`n`nPress OK to continue.
+    }
+
     if (errorMessages != "") {
         MsgBox, 16, Diagnostic Failed, The following issues were found:`n`n%errorMessages%
         ExitApp
