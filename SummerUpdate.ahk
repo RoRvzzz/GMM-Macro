@@ -728,12 +728,15 @@ quickDetectEgg(buyColor, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2Rati
     isSelected := 0
 
     eggColorMap := Object()
-    eggColorMap["Common Egg"]    := "0xFFFFFF"
-    eggColorMap["Uncommon Egg"]  := "0x81A7D3"
-    eggColorMap["Rare Egg"]      := "0xBB5421"
-    eggColorMap["Legendary Egg"] := "0x2D78A3"
-    eggColorMap["Mythical Egg"]  := "0x00CCFF"
-    eggColorMap["Bug Egg"]       := "0x86FFD5"
+    eggColorMap["Common Egg"]    	:= "0xFFFFFF"
+    eggColorMap["Uncommon Egg"]  	:= "0x81A7D3"
+    eggColorMap["Rare Egg"]      	:= "0xBB5421"
+    eggColorMap["Legendary Egg"] 	:= "0x2D78A3"
+    eggColorMap["Mythical Egg"]  	:= "0x00CCFF"
+    eggColorMap["Bug Egg"]       	:= "0x86FFD5"
+    eggColorMap["Common Summer Egg"]    := "0x00FFFF"
+    eggColorMap["Rare Summer Egg"]      := "0xFFFFAA"
+    eggColorMap["Paradise Egg"]         := "0x32CDFF"
 
     Loop, 5 {
         for rarity, color in eggColorMap {
@@ -899,16 +902,16 @@ quickDetect(color1, color2, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2R
 
 ; item arrays
 
-seedItems := ["Carrot Seed", "Strawberry Seed", "Blueberry Seed", "Orange Tulip"
-             , "Tomato Seed", "Corn Seed", "Daffodil Seed", "Watermelon Seed"
-             , "Pumpkin Seed", "Apple Seed", "Bamboo Seed", "Coconut Seed"
-             , "Cactus Seed", "Dragon Fruit Seed", "Mango Seed", "Grape Seed"
-             , "Mushroom Seed", "Pepper Seed", "Cacao Seed", "Beanstalk Seed", "Ember Lily Seed", "Sugar Apple Seed"] ;
+seedItems := ["Carrot Seed", "Strawberry Seed", "Blueberry Seed"
+             , "Tomato Seed", "Cauliflower Seed", "Watermelon Seed"
+             , "Green Apple Seed", "Avacado Seed", "Banana Seed", "Pineapple Seed"
+             , "Kiwi Seed", "Bell Pepper Seed", "Prickly Pear Seed", "Loquat Seed"
+             , "Feijoa Seed", "Sugar Apple Seed"] ;
 
 gearItems := ["Watering Can", "Trowel", "Recall Wrench", "Basic Sprinkler", "Advanced Sprinkler"
-             , "Godly Sprinkler", "Master Sprinkler", "Cleaning Spray", "Favorite Tool", "Harvest Tool", "Friendship Pot"]
+             , "Godly Sprinkler", "Tanning Mirror", "Master Sprinkler", "Cleaning Spray", "Favorite Tool", "Harvest Tool", "Friendship Pot"]
 
-eggItems := ["Common Egg", "Uncommon Egg", "Rare Egg", "Legendary Egg", "Mythical Egg"
+eggItems := ["Common Egg", "Rare Summer Egg", "Common Summer Egg", "Paradise Egg", "Mythical Egg"
              , "Bug Egg"]
 
 cosmeticItems := ["Cosmetic 1", "Cosmetic 2", "Cosmetic 3", "Cosmetic 4", "Cosmetic 5"
@@ -918,7 +921,7 @@ honeyItems := ["Flower Seed Pack", "Lavender Seed", "Nectarshade Seed", "Nectari
 	   , "Pollen Radar", "Nectar Staff", "Honey Sprinkler", "Bee Egg", "Bee Crate", "Honey Comb"
              , "Bee Chair", "Honey Torch", "Honey Walkway"]
 
-bearCraftingItems := ["Tropical Mist Sprinkler", "Berry Blusher Sprinkler", "Spice Spritzer Sprinkler", "Sweet Soaker Sprinkler"
+bearCraftingItems := ["Lightning Rod", "Reclaimer", "Tropical Mist Sprinkler", "Berry Blusher Sprinkler", "Spice Spritzer Sprinkler", "Sweet Soaker Sprinkler"
 	  , "Flower Froster Sprinkler", "Stalk Sprout Sprinkler", "Mutation Spray Choc", "Mutation Spray Pollinated", "Mutation Spray Shocked"
 	  , "Honey Crafters Crate", "Anti Bee Egg", "Pack Bee"]
 
@@ -1011,25 +1014,25 @@ ShowGui:
     Gui, Add, CheckBox, % "x391 y135 w12 h12 vSelectAllSeeds gHandleSelectAll -Theme Background3C3C3C " . (SelectAllSeeds ? "Checked" : "")
     
 
-    Loop, % seedItems.Length() {
+Loop, % seedItems.Length() {
         IniRead, sVal, %settingsFile%, Seed, Item%A_Index%, 0
-        if (A_Index > 18) {
-            col := 373
-            idx := A_Index - 19
+        if (A_Index > 12) {
+            col := 369
+            idx := A_Index - 13
             yBase := 183
         }
-        else if (A_Index > 9) {
+        else if (A_Index > 6) {
             col := 198
-            idx := A_Index - 10
+            idx := A_Index - 7
             yBase := 183
-        
+
         }
         else {
             col := 23
             idx := A_Index
-            yBase := 158
+            yBase := 143
         }
-        y := yBase + (idx * 25)
+        y := yBase + (idx * 40)
         Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vSeedItem" A_Index " gHandleSelectAll cD3D3D3 " . (sVal ? "Checked" : ""), 
 
     }
@@ -1041,18 +1044,18 @@ ShowGui:
     Gui, Add, Checkbox, % "x391 y135 w12 h12 vSelectAllGears gHandleSelectAll c87CEEB " . (SelectAllGears ? "Checked" : ""), Select All Gears 
 
 
-Loop, % gearItems.Length() {
+    Loop, % gearItems.Length() {
         IniRead, gVal, %settingsFile%, Gear, Item%A_Index%, 0
-        if (A_Index > 7) {
+        if (A_Index > 8) {
             col := 373
-            idx := A_Index - 8
+            idx := A_Index - 9
             yBase := 192
         }
         else if (A_Index > 3) {
-            col := 197
+            col := 200
             idx := A_Index - 4
             yBase := 192
-
+        
         }
         else {
             col := 28
@@ -1063,7 +1066,6 @@ Loop, % gearItems.Length() {
         Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vGearItem" A_Index " gHandleSelectAll cD3D3D3 " . (gVal ? "Checked" : ""), 
 
     }
-
     Gui, Tab, 3
     Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx background egg tab.PNG"
     IniRead, SelectAllEggs, %settingsFile%, Egg, SelectAllEggs, 0
@@ -1159,13 +1161,13 @@ Gui, Add, Edit, x369 y132 w36 h18 vManualSeedCraftLock gUpdateCraftLock -Theme c
 ; ----- BearCrafting Set -----
 Loop, % bearCraftingItems.Length() {
     IniRead, bVal, %settingsFile%, BearCrafting, Item%A_Index%, 0
-    if (A_Index > 8) {
-        col := 374, idx := A_Index - 9, yBase := 183
-    } else if (A_Index > 4) {
-        col := 199, idx := A_Index - 5, yBase := 183
-    } else {
-        col := 25, idx := A_Index, yBase := 133
-    }
+if (A_Index > 9) {
+    col := 374, idx := A_Index - 9, yBase := 133  ; was 183
+} else if (A_Index > 5) {
+    col := 199, idx := A_Index - 5, yBase := 133  ; was 183
+} else {
+    col := 25, idx := A_Index, yBase := 133
+}
     y := yBase + (idx * 50)
     Gui, Add, Checkbox, % "x" col " y" y " w13 h13 vBearCraftingItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (bVal ? "Checked" : ""), % bearCraftingItems[A_Index]
 }
@@ -2936,20 +2938,17 @@ AutoHoneyPath:
     WinActivate, ahk_exe RobloxPlayerBeta.exe
     Sleep, 100
     SendDiscordMessage(webhookURL, "Honey Compress Cycle", "Starting honey compress cycle.", COLOR_INFO)
-    uiUniversal("616161616062606")
-    Sleep, % FastMode ? 500 : 2500
-    Send, {d down}
-    Sleep, 9150
-    Send, {d up}
-    Sleep, % FastMode ? 300 : 300
-    Send, {Up Down}
-    Sleep, 620
-    Send, {Up Up}
-    Sleep, % FastMode ? 100 : 300
-    Send, {d down}
-    Sleep, 600
-    Send, {d up}
-    Sleep, % FastMode ? 100 : 300
+    hotbarController(0, 1, "0")
+    uiUniversal("11110")
+    sleepAmount(100, 500)
+    hotbarController(1, 0, "2")
+    sleepAmount(100, 500)
+    SafeClickRelative(midX, midY)
+    sleepAmount(800, 1000)
+    Send, {Down Down}
+    Sleep, 2000
+    Send, {Down Up}
+    sleepAmount(100, 1000)
     Send, {e}
     Sleep, % FastMode ? 100 : 300
     uiUniversal("63636363616066664646460")
@@ -3058,17 +3057,17 @@ CraftShopUiFix() {
 
     WinActivate, ahk_exe RobloxPlayerBeta.exe
     SendDiscordMessage(webhookURL, "Seed Crafting Cycle", "Starting seed crafting cycle.", COLOR_INFO)
-    Sleep, 100
-    uiUniversal("1111020")
-    Sleep, % FastMode ? 500 : 2500
-    Send, {d down}
-    Sleep, 7000
-    Send, {d up}
-    Sleep, % FastMode ? 300 : 300
-    Send, {Up Down}
-    Sleep, 820
-    Send, {Up Up}
-    Sleep, % FastMode ? 100 : 300
+    hotbarController(0, 1, "0")
+    uiUniversal("11110")
+    sleepAmount(100, 500)
+    hotbarController(1, 0, "2")
+    sleepAmount(100, 500)
+    SafeClickRelative(midX, midY)
+    sleepAmount(800, 1000)
+    Send, {Down Down}
+    Sleep, 900
+    Send, {Down Up}
+    sleepAmount(100, 1000)
     Send, {c}
     Sleep, % FastMode ? 100 : 300
     Send, {e}
@@ -3398,7 +3397,7 @@ Return
 }
 
 selectedBearCraftingItems := []
-Loop, 12 {
+Loop, 15 {
     lastRanItem := currentItem 
     IniRead, value, %A_ScriptDir%\settings.ini, BearCrafting, Item%A_Index%, 0
     if (value = 1)
@@ -3416,21 +3415,17 @@ if (bearCraftActionQueue.Length() = 0) {
 
     WinActivate, ahk_exe RobloxPlayerBeta.exe
     SendDiscordMessage(webhookURL, "Bear Crafting Cycle", "Starting bear crafting cycle.", COLOR_INFO)
-    Sleep, 100
-    uiUniversal("1111020")
-    Sleep, % FastMode ? 500 : 2500
-    Send, {d down}
-    Sleep, 7000
-    Send, {d up}
-    Sleep, % FastMode ? 300 : 300
-    Send, {Up Down}
-    Sleep, 600
-    Send, {Up Up}
-    Sleep, % FastMode ? 100 : 300
-    Send, {d down}
-    Sleep, 600
-    Send, {d up}
-    Sleep, % FastMode ? 100 : 300
+    hotbarController(0, 1, "0")
+    uiUniversal("11110")
+    sleepAmount(100, 500)
+    hotbarController(1, 0, "2")
+    sleepAmount(100, 500)
+    SafeClickRelative(midX, midY)
+    sleepAmount(800, 1000)
+    Send, {Down Down}
+    Sleep, 1200
+    Send, {Down Up}
+    sleepAmount(100, 1000)
     Send, {c}
     Sleep, % FastMode ? 100 : 300
     Send, {e}
@@ -3477,8 +3472,68 @@ if (bearCraftActionQueue.Length() > 0) {
 
     if (currentCraftingItem = 1) {
 	CraftShopUiFix()
-	currentItem := "Tropical Mist Sprinkler"
+	currentItem := "Lightning Rod"
         uiUniversal("3333333545450545505")
+
+	Sleep, 100
+	searchItem("basic")
+	Sleep, 100
+	ClickFirstFour()
+	Sleep, 100
+        Send, {vkC0sc029}
+	Sleep, 100
+	searchItem("advanced")
+	Sleep, 100
+	ClickFirstFour()
+	Sleep, 100
+        Send, {vkC0sc029}
+	Sleep, 100
+	searchItem("godly")
+	Sleep, 100
+	ClickFirstFour()
+	Sleep, 100
+        Send, {vkC0sc029}
+	Sleep, 500
+	closeRobuxPrompt()
+	Sleep, 100
+
+	bearCraftingLocked := 1
+	SetTimer, UnlockBearCraft, -2700000
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
+        bearCraftActionQueue.RemoveAt(1)
+        Sleep, 50
+    }
+    if (currentCraftingItem = 2) {
+	CraftShopUiFix()
+	currentItem := "Reclaimer"
+        uiUniversal("333333354545450545505")
+
+	Sleep, 100
+	searchItem("common")
+	Sleep, 100
+	ClickFirstFour()
+	Sleep, 100
+        Send, {vkC0sc029}
+	Sleep, 100
+	searchItem("harvest")
+	Sleep, 100
+	ClickFirstFour()
+	Sleep, 100
+        Send, {vkC0sc029}
+	Sleep, 500
+	closeRobuxPrompt()
+	Sleep, 100
+
+	bearCraftingLocked := 1
+	SetTimer, UnlockBearCraft, -2700000
+	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
+        bearCraftActionQueue.RemoveAt(1)
+        Sleep, 50
+    }
+    if (currentCraftingItem = 3) {
+	CraftShopUiFix()
+	currentItem := "Tropical Mist Sprinkler"
+        uiUniversal("33333335454545450545505")
 
 	Sleep, 100
 	searchItem("coconut")
@@ -3518,10 +3573,11 @@ if (bearCraftActionQueue.Length() > 0) {
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 2) {
+    if (currentCraftingItem = 4) {
+
 	CraftShopUiFix()
 	currentItem := "Berry Blusher Sprinkler"
-        uiUniversal("333333354545450545505")
+        uiUniversal("3333333545454545450545505")
 
 	Sleep, 100
 	searchItem("grape")
@@ -3561,10 +3617,17 @@ if (bearCraftActionQueue.Length() > 0) {
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 3) {
+    if (currentCraftingItem = 5) {
+
+        uiUniversal("33333333")
+        Sleep, % FastMode ? 100 : 300
+        uiUniversal("5151515454545454545450505333333")
+        Sleep, % FastMode ? 100 : 300
+        uiUniversal("3333333545454545450505")
+
 	CraftShopUiFix()
 	currentItem := "Spice Spritzer Sprinkler"
-        uiUniversal("33333335454545450545505")
+        uiUniversal("333333354545454545450545505")
 
 	Sleep, 100
 	searchItem("pepper")
@@ -3604,16 +3667,11 @@ if (bearCraftActionQueue.Length() > 0) {
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 4) {
+    if (currentCraftingItem = 6) {
 
-        uiUniversal("33333333")
-        Sleep, % FastMode ? 100 : 300
-        uiUniversal("5151515454545454545450505333333")
-        Sleep, % FastMode ? 100 : 300
-        uiUniversal("3333333545450505")
-
+	CraftShopUiFix()
 	currentItem := "Sweet Soaker Sprinkler"
-        uiUniversal("3333333545454545450545505")
+        uiUniversal("33333335454545454545450545505")
 
 	Sleep, 100
 	searchItem("watermelon")
@@ -3637,10 +3695,10 @@ if (bearCraftActionQueue.Length() > 0) {
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 5) {
+    if (currentCraftingItem = 7) {
 	CraftShopUiFix()
 	currentItem := "Flower Froster Sprinkler"
-        uiUniversal("333333354545454545450545505")
+        uiUniversal("3333333545454545454545450545505")
 
 	Sleep, 100
 	searchItem("orange")
@@ -3680,10 +3738,10 @@ if (bearCraftActionQueue.Length() > 0) {
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 6) {
+    if (currentCraftingItem = 8) {
 	CraftShopUiFix()
 	currentItem := "Stalk Sprout Sprinkler"
-        uiUniversal("33333335454545454545450545505")
+        uiUniversal("33333333333354545454545454545450545505")
 
 	Sleep, 100
 	searchItem("bamboo")
@@ -3723,10 +3781,10 @@ if (bearCraftActionQueue.Length() > 0) {
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 7) {
+    if (currentCraftingItem = 9) {
 	CraftShopUiFix()
 	currentItem := "Mutation Spray Choc"
-        uiUniversal("3333333545454545454545450545505")
+        uiUniversal("33333333333333335454545454545454545450545505")
 
 	Sleep, 100
 	searchItem("cacao")
@@ -3745,15 +3803,15 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -900000
+	SetTimer, UnlockBearCraft, -720000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 8) {
+    if (currentCraftingItem = 10) {
 	CraftShopUiFix()
 	currentItem := "Mutation Spray Pollinated"
-        uiUniversal("333333354545454545454545450545505")
+        uiUniversal("3333333333333333545454545454545454545450545505")
 
 	Sleep, 100
 	searchItem("balm")
@@ -3777,10 +3835,10 @@ if (bearCraftActionQueue.Length() > 0) {
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 9) {
+    if (currentCraftingItem = 11) {
 	CraftShopUiFix()
 	currentItem := "Mutation Spray Shocked"
-        uiUniversal("33333335454545454545454545450545505")
+        uiUniversal("333333333333333354545454545454545454545450545505")
 
 	Sleep, 100
 	searchItem("lightning")
@@ -3804,10 +3862,10 @@ if (bearCraftActionQueue.Length() > 0) {
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 10) {
+    if (currentCraftingItem = 12) {
 	CraftShopUiFix()
 	currentItem := "Honey Crafters Crate"
-        uiUniversal("333333354545454545454545454545054545505")
+        uiUniversal("333333333333333354545454545454545454545454555054545505")
 
 	Sleep, 100
 	searchItem("crate")
@@ -3823,10 +3881,10 @@ if (bearCraftActionQueue.Length() > 0) {
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 11) {
+    if (currentCraftingItem = 13) {
 	CraftShopUiFix()
 	currentItem := "Anti Bee Egg"
-        uiUniversal("3333333545454545454545454545454545054545505")
+        uiUniversal("33333333333333335454545454545454545454545454545054545505")
 
 	Sleep, 100
 	searchItem("egg")
@@ -3842,10 +3900,10 @@ if (bearCraftActionQueue.Length() > 0) {
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
     }
-    if (currentCraftingItem = 12) {
+    if (currentCraftingItem = 14) {
 	CraftShopUiFix()
 	currentItem := "Pack Bee"
-        uiUniversal("333333354545454545454545454545454545450545505")
+        uiUniversal("33333333333333335454545454545454545454545454545454505455505")
 
 	Sleep, 100
 	searchItem("sunflower")
