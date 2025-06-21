@@ -1153,8 +1153,9 @@ Loop, % seedCraftingItems.Length() {
 }
 
 ; === Seed Craft Lock ===
-IniRead, ManualSeedCraftLock, %settingsFile%, Main, ManualSeedCraftLock, 0
-Gui, Add, Edit, x369 y132 w36 h18 vManualSeedCraftLock gUpdateCraftLock -Theme cBlack, %ManualSeedCraftLock%
+IniRead, readSeedLock, %settingsFile%, Main, ManualSeedCraftLock, 0
+displaySeedLock := readSeedLock > 0 ? readSeedLock / 60000 : 0
+Gui, Add, Edit, x369 y132 w36 h18 vGuiSeedLock gUpdateCraftLock -Theme cBlack, %displaySeedLock%
 
 ; ----- BearCrafting Set -----
 Loop, % bearCraftingItems.Length() {
@@ -1170,8 +1171,9 @@ Loop, % bearCraftingItems.Length() {
     Gui, Add, Checkbox, % "x" col " y" y " w13 h13 vBearCraftingItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (bVal ? "Checked" : ""), % bearCraftingItems[A_Index]
 }
 ; === Bear Craft Lock ===
-IniRead, ManualBearCraftLock, %settingsFile%, Main, ManualBearCraftLock, 0
-Gui, Add, Edit, x369 y132 w36 h18 vManualBearCraftLock gUpdateCraftLock -Theme cBlack, %ManualBearCraftLock%
+IniRead, readBearLock, %settingsFile%, Main, ManualBearCraftLock, 0
+displayBearLock := readBearLock > 0 ? readBearLock / 60000 : 0
+Gui, Add, Edit, x369 y132 w36 h18 vGuiBearLock gUpdateCraftLock -Theme cBlack, %displayBearLock%
 
 
     Gui, Tab, 6
@@ -1605,10 +1607,14 @@ UpdateKeybind:
     Return
 
 UpdateCraftLock:
+    GuiControlGet, seedLockMins, , GuiSeedLock
+    GuiControlGet, bearLockMins, , GuiBearLock
+    
+    seedLockMs := seedLockMins * 60000
+    bearLockMs := bearLockMins * 60000
 
-    Gui, Submit, NoHide
-    IniWrite, %ManualSeedCraftLock%, %settingsFile%, Main, ManualSeedCraftLock
-    IniWrite, %ManualBearCraftLock%, %settingsFile%, Main, ManualBearCraftLock
+    IniWrite, %seedLockMs%, %settingsFile%, Main, ManualSeedCraftLock
+    IniWrite, %bearLockMs%, %settingsFile%, Main, ManualBearCraftLock
     Return
     
 UpdateSpeed:
@@ -3033,12 +3039,12 @@ ClickFruitFilter() {
 
 AutoSeedCraftPath:
 
-    SendDiscordMessage(webhookURL, "[Debug] AutoSeedCraftPath", "Function started.", COLOR_INFO, false, true)
-    if (cycleCount = 0 && ManualSeedCraftLock > 0) {
-	seedCraftingLocked := 1
-	SetCraftLock("seed", ManualSeedCraftLock)
-Return
-}
+    IniRead, seedLockDuration, %settingsFile%, Main, ManualSeedCraftLock, 0
+    if (cycleCount = 0 && seedLockDuration > 0) {
+        seedCraftingLocked := 1
+        SetTimer, UnlockSeedCraft, -%seedLockDuration%
+        Return
+    }
 
 selectedSeedCraftingItems := []
 Loop, 12 {
@@ -3137,7 +3143,7 @@ if (seedCraftActionQueue.Length() > 0) {
 	closeRobuxPrompt()
 
 	seedCraftingLocked := 1
-	SetCraftLock("seed", 1200) ; 20 minutes
+	SetTimer, UnlockSeedCraft, -1200000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3165,7 +3171,7 @@ if (seedCraftActionQueue.Length() > 0) {
 	closeRobuxPrompt()
 
 	seedCraftingLocked := 1
-	SetCraftLock("seed", 600) ; 10 minutes
+	SetTimer, UnlockSeedCraft, -600000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3193,7 +3199,7 @@ if (seedCraftActionQueue.Length() > 0) {
 	closeRobuxPrompt()
 
 	seedCraftingLocked := 1
-	SetCraftLock("seed", 960) ; 16 minutes
+	SetTimer, UnlockSeedCraft, -960000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3233,7 +3239,7 @@ if (seedCraftActionQueue.Length() > 0) {
 	closeRobuxPrompt()
 
 	seedCraftingLocked := 1
-	SetCraftLock("seed", 1200) ; 20 minutes
+	SetTimer, UnlockSeedCraft, -1200000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3261,7 +3267,7 @@ if (seedCraftActionQueue.Length() > 0) {
 	closeRobuxPrompt()
 
 	seedCraftingLocked := 1
-	SetCraftLock("seed", 1500) ; 25 minutes
+	SetTimer, UnlockSeedCraft, -1500000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3289,7 +3295,7 @@ if (seedCraftActionQueue.Length() > 0) {
 	closeRobuxPrompt()
 
 	seedCraftingLocked := 1
-	SetCraftLock("seed", 900) ; 15 minutes
+	SetTimer, UnlockSeedCraft, -900000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3325,7 +3331,7 @@ if (seedCraftActionQueue.Length() > 0) {
 	closeRobuxPrompt()
 
 	seedCraftingLocked := 1
-	SetCraftLock("seed", 1800) ; 30 minutes
+	SetTimer, UnlockSeedCraft, -1800000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3371,7 +3377,7 @@ if (seedCraftActionQueue.Length() > 0) {
 	closeRobuxPrompt()
 
 	seedCraftingLocked := 1
-	SetCraftLock("seed", 2700) ; 45 minutes
+	SetTimer, UnlockSeedCraft, -2700000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         seedCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3400,12 +3406,12 @@ Return
 
 AutoBearCraftPath:
 
-    SendDiscordMessage(webhookURL, "[Debug] AutoBearCraftPath", "Function started.", COLOR_INFO, false, true)
-    if (cycleCount = 0 && ManualBearCraftLock > 0) {
-	bearCraftingLocked := 1
-	SetCraftLock("bear", ManualBearCraftLock)
-Return
-}
+    IniRead, bearLockDuration, %settingsFile%, Main, ManualBearCraftLock, 0
+    if (cycleCount = 0 && bearLockDuration > 0) {
+        bearCraftingLocked := 1
+        SetTimer, UnlockBearCraft, -%bearLockDuration%
+        Return
+    }
 
 selectedBearCraftingItems := []
 Loop, 12 {
@@ -3523,7 +3529,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 3600) ; 1 hour
+	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3566,7 +3572,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 3600) ; 1 hour
+	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3609,7 +3615,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 3600) ; 1 hour
+	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3642,7 +3648,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 3600) ; 1 hour
+	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3685,7 +3691,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 3600) ; 1 hour
+	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3728,7 +3734,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 3600) ; 1 hour
+	SetTimer, UnlockBearCraft, -3600000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3755,7 +3761,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 900) ; 15 minutes
+	SetTimer, UnlockBearCraft, -900000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3782,7 +3788,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 300) ; 5 minutes
+	SetTimer, UnlockBearCraft, -300000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3809,7 +3815,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 1800) ; 30 minutes
+	SetTimer, UnlockBearCraft, -1800000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3828,7 +3834,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 1800) ; 30 minutes
+	SetTimer, UnlockBearCraft, -14400000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3847,7 +3853,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 7200) ; 2 hours
+	SetTimer, UnlockBearCraft, -7200000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
@@ -3882,7 +3888,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetCraftLock("bear", 14400) ; 4 hours
+	SetTimer, UnlockBearCraft, -14400000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
