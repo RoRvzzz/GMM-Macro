@@ -29,7 +29,7 @@ previousERate     := 5
 
 clickX := 986
 clickY := 1064
-currentResolution := "1440p"
+currentResolution := "1080p"
 ;  GUI
 Gui, +Resize
 Gui, Color, %BG_Main%
