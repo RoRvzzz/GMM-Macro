@@ -1,6 +1,4 @@
-; ---------------------------------------------------------------------------
-;  Harvest Event Mini-Macro – AutoHotkey v1.1 (dark-theme, global hotkeys)
-; ---------------------------------------------------------------------------
+;  Harvest Event Mini-Macro
 #NoEnv
 #SingleInstance Force
 SetBatchLines, -1
@@ -13,18 +11,14 @@ CoordMode, Mouse, Screen
 #KeyHistory 0
 ListLines, Off            ; Disable line logging for speed
 
-; ---------------------------------------------------------------------------
 ;  COLOUR PALETTE  (BGR for AHK v1)
-; ---------------------------------------------------------------------------
 BG_Main    := 0x202020     ; window background
 BG_Panel   := 0x2B2B2B     ; dark gray for frames / edits
 CLR_Text   := 0xFFFFFF     ; white text
 CLR_Button := 0x3C3C3C     ; default button face
 CLR_Start  := 0x46BB6B     ; green (start)
 CLR_Stop   := 0xDB7D4D     ; red   (running/stop)
-; ---------------------------------------------------------------------------
-;  Globals (logic unchanged)
-; ---------------------------------------------------------------------------
+;  Globals
 isSpamClicking := 0
 isSpammingE    := 0
 forceStop      := 0
@@ -36,9 +30,7 @@ previousERate     := 5
 clickX := 986
 clickY := 1064
 currentResolution := "1440p"
-; ---------------------------------------------------------------------------
 ;  GUI
-; ---------------------------------------------------------------------------
 Gui, +Resize
 Gui, Color, %BG_Main%
 Gui, Font, s12 c%CLR_Text%, Segoe UI
@@ -87,11 +79,7 @@ GuiControl,, ERateEdit,     5
 
 Gui, Show, w300 h510, Harvest Event Mini Macro
 Return
-; ---------------------------------------------------------------------------
-;  BUTTON / HOTKEY HANDLERS
-; ---------------------------------------------------------------------------
 ToggleAll:
-    ; Remove this performance killer: Gui, Submit, NoHide
     if (isSpamClicking || isSpammingE)
         Gosub, EmergencyStop
     else {
@@ -101,23 +89,19 @@ ToggleAll:
         GuiControl, +Background%CLR_Stop%, MainButton
     }
 Return
-; ---------------------------------------------------------------------------
 StartAll:
     forceStop := 0
     
-    ; Cache everything at once
     GuiControlGet, currentResolution, , ResolutionDropdown
     GuiControlGet, clickRateValue, , ClickRateEdit
     GuiControlGet, eRateValue, , ERateEdit
     
-    ; Set coordinates
     if (currentResolution = "1080p") {
         clickX := 662, clickY := 705
     } else {
         clickX := 986, clickY := 1064
     }
     
-    ; Validate and set timers
     clickRate := (clickRateValue + 0 < 5) ? 5 : clickRateValue + 0
     eRate := (eRateValue + 0 < 5) ? 5 : eRateValue + 0
     
@@ -126,7 +110,6 @@ StartAll:
     SetTimer, DoClick, %clickRate%
     SetTimer, DoE, %eRate%
 Return
-; ---------------------------------------------------------------------------
 EmergencyStop:
     forceStop := 1
     isSpamClicking := 0
@@ -144,10 +127,8 @@ Return
 ResetForceStop:
     forceStop := 0
 Return
-; ---------------------------------------------------------------------------
 SlowMode:
     if (!isSlowMode) {
-        ; Get current values before changing
         GuiControlGet, currentClickRate, , ClickRateEdit
         GuiControlGet, currentERate, , ERateEdit
         previousClickRate := currentClickRate
@@ -168,7 +149,6 @@ SlowMode:
             GuiControl,, StatusText, Status: Running
     }
 
-    ; refresh timers if active - cache coordinates again
     if (isSpamClicking) {
         SetTimer, DoClick, Off
         GuiControlGet, newClickRate, , ClickRateEdit
@@ -194,28 +174,22 @@ SlowMode:
         SetTimer, DoE, %rate%
     }
 Return
-; ---------------------------------------------------------------------------
 DoClick:
     if (!forceStop && isSpamClicking) {
-        ; Ultra-fast click without MouseMove
         Click, %clickX%, %clickY%
     }
 Return
 
 DoE:
     if (!forceStop && isSpammingE) {
-        ; Use SendRaw for fastest E key sending
         SendRaw, e
     }
 Return
-; ---------------------------------------------------------------------------
 ExitScript:
 GuiClose:
     ExitApp
 Return
-; ---------------------------------------------------------------------------
 ;  Global hotkeys
-; ---------------------------------------------------------------------------
 Q::Gosub ToggleAll
 R::Gosub EmergencyStop
 l::Gosub SlowMode
