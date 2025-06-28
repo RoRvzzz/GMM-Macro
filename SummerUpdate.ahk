@@ -3533,7 +3533,7 @@ if (bearCraftActionQueue.Length() > 0) {
 	Sleep, 100
 
 	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -2700000
+	SetTimer, UnlockBearCraft, -1500000
 	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
         bearCraftActionQueue.RemoveAt(1)
         Sleep, 50
