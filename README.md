@@ -1,6 +1,6 @@
 # Grow A Garden Macro
 
-An automation macro for the Roblox game "Grow a Garden" that helps streamline gameplay through automated tasks and features.
+An automation macro for the Roblox game "Grow a Garden" that helps streamline gameplay through automated tasks and features. (BY DOWNLOADING YOU AGREE TO OUR TERMS AT CUSTOM-LICENSE.md)
 
 ## 🚀 Features
 
