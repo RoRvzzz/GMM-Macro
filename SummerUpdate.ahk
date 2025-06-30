@@ -70,10 +70,13 @@ subTabcosmeticpath := mainDir . "rbx background CosmeticShop.PNG"
 subTabSeedPath  := mainDir . "background seedcaft subtab.PNG"
 subTabBearPath  := mainDir . "background bearcraft subtab.PNG"
 
+subTabSummerSelectPath := mainDir . "background summer shop.PNG"
+subTabSummerRecordPath := mainDir . "background harvest tab.PNG"
 
 BuyAllCosmetics := ["A", "B", "C"]
 seedCraftingItems := ["X", "Y"]
 bearCraftingItems := ["L", "M"]
+
 
 
 HideAllCheckboxSets() {
@@ -95,6 +98,29 @@ HideAllCheckboxSets() {
         GuiControl, Hide, % "BearCraftingItem" A_Index
         GuiControl, Hide, BearCraftLockLabel
         GuiControl, Hide, ManualBearCraftLock
+
+}
+HideAllSummerControls() {
+    global summerItems
+    GuiControl, Hide, SelectAllSummer
+    Loop, % summerItems.Length() {
+        GuiControl, Hide, SummerItem%A_Index%
+    }
+    GuiControl, Hide, SummerRecord
+    GuiControl, Hide, SummerTest
+    GuiControl, Hide, SummerLoad
+    GuiControl, Hide, SummerF4
+    GuiControl, Hide, autoSummerHarvest
+    GuiControl, Hide, numberOfCycleLabel
+    GuiControl, Hide, numberOfCycle
+    GuiControl, Hide, saveCycle
+    GuiControl, Hide, collectMethodLabel
+    GuiControl, Hide, savedHarvestSpeed
+    GuiControl, Hide, autosummerharvestext
+    GuiControl, Hide, explanationtext
+    GuiControl, Hide, explanationtext1
+    GuiControl, Hide, explanationtext2
+    GuiControl, Hide, explanationtext3
 
 }
 
@@ -940,8 +966,8 @@ seedItems := ["Carrot Seed", "Strawberry Seed", "Blueberry Seed"
 gearItems := ["Watering Can", "Trowel", "Recall Wrench", "Basic Sprinkler", "Advanced Sprinkler"
              , "Godly Sprinkler", "Magnifying Glass", "Tanning Mirror", "Master Sprinkler", "Cleaning Spray", "Favorite Tool", "Harvest Tool", "Friendship Pot"]
 
-eggItems := ["Common Egg", "Rare Summer Egg", "Common Summer Egg", "Paradise Egg", "Mythical Egg"
-             , "Bug Egg", "Bee Egg"]
+eggItems := ["Common Egg", "Rare Summer Egg", "Bee Egg", "Common Summer Egg", "Paradise Egg", "Mythical Egg"
+             , "Bug Egg"]
 
 cosmeticItems := ["Cosmetic 1", "Cosmetic 2", "Cosmetic 3", "Cosmetic 4", "Cosmetic 5"
              , "Cosmetic 6",  "Cosmetic 7", "Cosmetic 8", "Cosmetic 9"]
@@ -958,7 +984,7 @@ seedCraftingItems := ["Peace Lily Seed", "Aloe Vera Seed", "Guanabana Seed"]
 
 settingsFile := A_ScriptDir "\settings.ini"
 
-Gosub, RunDiagnostics
+;Gosub, RunDiagnostics
 
 Gosub, ShowGui
 Return
@@ -1082,14 +1108,14 @@ Loop, % seedItems.Length() {
 
     Loop, % gearItems.Length() {
         IniRead, gVal, %settingsFile%, Gear, Item%A_Index%, 0
-        if (A_Index > 9) {
+        if (A_Index > 8) {
             col := 373
-            idx := A_Index - 10
+            idx := A_Index - 9
             yBase := 192
         }
-        else if (A_Index > 4) {
+        else if (A_Index > 3) {
             col := 200
-            idx := A_Index - 5
+            idx := A_Index - 4
             yBase := 192
         
         }
@@ -1166,65 +1192,140 @@ Loop, % seedItems.Length() {
     IniRead, AutoHoneySetting, %settingsFile%, AutoHoney, AutoHoneySetting, 0
     Gui, Add, CheckBox, % "x379 y135 w12 h12 vAutoHoney gSaveAutoHoney BackgroundTrans c00FF00 " . (AutoHoneySetting ? "Checked" : ""), submite pollinated
 
-; ----- SeedCrafting Set -----
-Loop, % seedCraftingItems.Length() {
-    IniRead, sVal, %settingsFile%, SeedCrafting, Item%A_Index%, 0
-    if (A_Index > 2) {
-        col := 374, idx := A_Index - 3, yBase := 213
-    } else if (A_Index > 1) {
-        col := 199, idx := A_Index - 2, yBase := 213
-    } else {
-        col := 25, idx := A_Index, yBase := 143
+    ; ----- SeedCrafting Set -----
+    Loop, % seedCraftingItems.Length() {
+        IniRead, sVal, %settingsFile%, SeedCrafting, Item%A_Index%, 0
+        if (A_Index > 2) {
+            col := 374, idx := A_Index - 3, yBase := 213
+        } else if (A_Index > 1) {
+            col := 199, idx := A_Index - 2, yBase := 213
+        } else {
+            col := 25, idx := A_Index, yBase := 143
+        }
+        y := yBase + (idx * 70)
+        Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vSeedCraftingItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (sVal ? "Checked" : ""), % seedCraftingItems[A_Index]
     }
-    y := yBase + (idx * 70)
-    Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vSeedCraftingItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (sVal ? "Checked" : ""), % seedCraftingItems[A_Index]
-}
 
-; === Seed Craft Lock ===
-IniRead, ManualSeedCraftLock, %settingsFile%, Main, ManualSeedCraftLock, 0
-Gui, Add, Edit, x369 y132 w36 h18 vManualSeedCraftLock gUpdateCraftLock -Theme cBlack, %ManualSeedCraftLock%
+    ; === Seed Craft Lock ===
+    IniRead, ManualSeedCraftLock, %settingsFile%, Main, ManualSeedCraftLock, 0
+    Gui, Add, Edit, x369 y132 w36 h18 vManualSeedCraftLock gUpdateCraftLock -Theme cBlack, %ManualSeedCraftLock%
 
-; ----- BearCrafting Set -----
-Loop, % bearCraftingItems.Length() {
-    IniRead, bVal, %settingsFile%, BearCrafting, Item%A_Index%, 0
-if (A_Index > 8) {
-    col := 374, idx := A_Index - 9, yBase := 183  ; was 183
-} else if (A_Index > 4) {
-    col := 199, idx := A_Index - 5, yBase := 183  ; was 183
-} else {
-    col := 25, idx := A_Index, yBase := 133
-}
-    y := yBase + (idx * 50)
-    Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vBearCraftingItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (bVal ? "Checked" : ""), % bearCraftingItems[A_Index]
-}
-; === Bear Craft Lock ===
-IniRead, ManualBearCraftLock, %settingsFile%, Main, ManualBearCraftLock, 0
-Gui, Add, Edit, x369 y132 w36 h18 vManualBearCraftLock gUpdateCraftLock -Theme cBlack, %ManualBearCraftLock%
-
-
+    ; ----- BearCrafting Set -----
+    Loop, % bearCraftingItems.Length() {
+        IniRead, bVal, %settingsFile%, BearCrafting, Item%A_Index%, 0
+    if (A_Index > 8) {
+        col := 374, idx := A_Index - 9, yBase := 183  ; was 183
+    } else if (A_Index > 4) {
+        col := 199, idx := A_Index - 5, yBase := 183  ; was 183
+    } else {
+        col := 25, idx := A_Index, yBase := 133
+    }
+        y := yBase + (idx * 50)
+        Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vBearCraftingItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (bVal ? "Checked" : ""), % bearCraftingItems[A_Index]
+    }
+    ; === Bear Craft Lock ===
+    IniRead, ManualBearCraftLock, %settingsFile%, Main, ManualBearCraftLock, 0
+    Gui, Add, Edit, x369 y132 w36 h18 vManualBearCraftLock gUpdateCraftLock -Theme cBlack, %ManualBearCraftLock%
     
+        HideAllCheckboxSets()
+Gosub, ShowcosmeticSubTab
 
     Gui, Tab, 5
+    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "background harvest tab.PNG"
     Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "background summer shop.PNG"
+    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans vPicSummerShop, % subTabSummerSelectPath
+    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans vPicHarvestTab, % subTabSummerRecordPath
 
+; Initially show summer shop background, hide harvest tab
+GuiControl, Show, PicSummerShop
+GuiControl, Hide, PicHarvestTab
 
-; ----- Summer Set -----
+   
+    Gui, Add, Text, x12  y80 w130 h40 gShowSummerSelectSubTab BackgroundTrans,
+    Gui, Add, Text, x140 y80 w130 h40 gShowSummerRecordSubTab BackgroundTrans,
 
-IniRead, SelectAllSummer, %settingsFile%, Summer, SelectAll, 0
-Gui, Add, CheckBox, % "x391 y135 w12 h12 vSelectAllSummer gHandleSelectAll BackgroundTrans cFFD700 " . (SelectAllSummer ? "Checked" : "")
+    ; Select All checkbox
+    IniRead, SelectAllSummer, %settingsFile%, Summer, SelectAll, 0
+    Gui, Add, CheckBox, % "x391 y135 w12 h12 vSelectAllSummer gHandleSelectAll BackgroundTrans cFFD700 " . (SelectAllSummer ? "Checked" : "")
 
-Loop, % summerItems.Length() {
-    IniRead, hVal, %settingsFile%, Summer, Item%A_Index%, 0
-    if (A_Index > 6) {
-        col := 375, idx := A_Index - 7, yBase := 193
-    } else if (A_Index > 3) {
-        col := 200, idx := A_Index - 4, yBase := 193
-    } else {
-        col := 20, idx := A_Index, yBase := 143
+    ; Summer item checkboxes
+    Gui, Font, s9 cWhite Bold, Segoe UI
+    Loop, % summerItems.Length() {
+        IniRead, hVal, %settingsFile%, Summer, Item%A_Index%, 0
+        if (A_Index > 6) {
+            col := 375, idx := A_Index - 7, yBase := 193
+        } else if (A_Index > 3) {
+            col := 200, idx := A_Index - 4, yBase := 193
+        } else {
+            col := 20, idx := A_Index, yBase := 143
+        }
+        y := yBase + (idx * 50)
+        Gui, Add, Checkbox, % "x" col " y" y " w13 h13 vSummerItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (hVal ? "Checked" : ""), % SummerItems[A_Index]
     }
-    y := yBase + (idx * 50)
-    Gui, Add, Checkbox, % "x" col " y" y " w13 h13 vSummerItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (hVal ? "Checked" : ""), % SummerItems[A_Index]
-}
+
+    ; Buttons
+    Gui, Add, Button, x202 y185 w120 h40 gToggleRecording vSummerRecord Background202020, Record New Path `n(F1)
+    Gui, Add, Button, x202 y350 w120 h40 gDemoInput vSummerTest Background202020, Test Path `n(F2)
+    Gui, Add, Button, x375 y350 w120 h40 gLoadInputs vSummerLoad Background202020, Load Saved Path `n(F3)
+    Gui, Add, Button, x25 y350 w120 h40 gF4 vSummerF4 Background202020, Test Auto-Harvest `n(F4)
+
+    ; Auto-collect checkbox
+    IniRead, autoSummerHarvest, %settingsFile%, Main, SummerHarvest, 0
+    Gui, Add, Checkbox, x20 y137 w13 h13 vautoSummerHarvest cFF7518, Auto-Collect & Submit Summer Harvest
+    Gui, Font, s9 cWhite Bold, Segoe UI
+    Gui, Add, Text, x35 y137 BackgroundTrans vautosummerharvestext cFF7518 , Auto Harvest and submit
+
+
+
+
+    ; Number of Cycle
+    Gui, Font, s9 cWhite Bold, Segoe UI
+    Gui, Add, Text, x195 y137 BackgroundTrans cFF7518 vnumberOfCycleLabel, Number of Cycle
+
+    IniRead, savedNumberOfCycle, %settingsFile%, Main, NumberOfCycle
+    if (savedNumberOfCycle = "ERROR" || savedNumberOfCycle = "")
+        savedNumberOfCycle := 3
+
+    Gui, Font, s8 c000000 Bold, Segoe UI
+    Gui, Add, Edit, x290 y135 w25 h18 vnumberOfCycle +BackgroundFFFFFF, %savedNumberOfCycle%
+
+    Gui, Font, s8 cD3D3D3 Bold, Segoe UI
+    Gui, Add, Button, x460 y137 w35 h18 gUpdateNumberOfCycle vsaveCycle Background202020, Save
+
+    ; Collect method
+    Gui, Font, s9 cWhite Bold, Segoe UI
+    Gui, Add, Text, x328 y137 BackgroundTrans cFF7518 vcollectMethodLabel, Collect Method
+
+    Gui, Font, s8 cBlack, Segoe UI
+    IniRead, savedHarvestSpeed, %settingsFile%, Main, HarvestSpeed, Stable
+    Gui, Add, DropDownList, vsavedHarvestSpeed gUpdateHarvestSpeed x415 y134 w35, Stable|Fast
+    GuiControl, ChooseString, savedHarvestSpeed, %savedHarvestSpeed%
+    Gui, Font, s8 cBlack, Segoe UI
+    Gui, Add, Text, x25 y190 w120 BackgroundTrans cwhite vexplanationtext,
+    ( 
+Press F1 and wait the alignment to finish.
+
+After the alignment finishes,
+proceed to use only the keyboard  to navigate to your target plant to harvest.
+)
+    Gui, Add, Text, x200 y240 w120 BackgroundTrans cwhite vexplanationtext1,
+( 
+Once you finished to navigate to your target plant, Press F1 again to stop recording the path.
+     )
+     Gui, Add, Text, x375 y190 w120 BackgroundTrans cwhite vexplanationtext2,
+( 
+Press F2 to see if your path is correctly recorded. 
+
+Once it's all done, you can now start the macro and the Summer Harvest is now automated.
+
+     )
+     Gui, Add, Text, x395 y392 w120 BackgroundTrans cwhite vexplanationtext3,
+     (
+       CREDIT-nasayuzaki- 
+     )
+ HideAllSummerControls()
+ Gosub, ShowSummerSelectSubTab
+
 
     Gui, Tab, 6
     
@@ -1265,11 +1366,6 @@ Loop, % summerItems.Length() {
     ; Gui, Add, Radio, x35 y260 gUpdateResolution c708090 %opt2%, 2560x1440 100`%
     ; Gui, Add, Radio, x35 y280 gUpdateResolution c708090 %opt3%, 1920x1080 100`%
     ; Gui, Add, Radio, x35 y300 gUpdateResolution c708090 %opt4%, 1280x720 100`%
-
-
-
-
-
 
 
         IniRead, PingSelected, %settingsFile%, Main, PingSelected, 0
@@ -1333,22 +1429,16 @@ Loop, % summerItems.Length() {
     Gui, Add, DropDownList, vSavedSpeed gUpdateSpeed x115 y191 w50 , Stable|Fast|Ultra|Max
     GuiControl, ChooseString, SavedSpeed, %SavedSpeed%
     
-    HideAllCheckboxSets()
-Gosub, ShowcosmeticSubTab
+
+
 
 
     Gui, Tab, 7
     Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro background credit.png"
-    ; Set the font to blue, underlined
     Gui, Font, cBlue underline
-
-    ; Add the text as a clickable link with transparent background
     Gui, Add, Text, x355 y345 w150 BackgroundTrans gOpenLink, GAG MODED MACROS DISCORD `njoin for update and bugreport
 
-    ; Reset the font so other text isn't underlined
     Gui, Font, norm
-
-
 
     Gui, Show, w520 h425, GAG MACRO Yark Spade Crafting update +xTazerTx's GIGA UI Rework
 
@@ -1357,7 +1447,7 @@ Gosub, ShowcosmeticSubTab
 Return
 
 OpenLink:
-    Run, https://discord.gg/gagmacros  ; <-- replace with your actual link
+    Run, https://discord.gg/gagmacros 
 return
 
 ; --- SUMMER NASA STUFF ---
@@ -1467,6 +1557,45 @@ ShowBearSubTab:
 
     }
 return
+ShowSummerSelectSubTab:
+    HideAllSummerControls()
+    GuiControl, Show, PicSummerShop
+    GuiControl, Hide, PicHarvestTab
+
+    GuiControl, Show, SelectAllSummer
+    Loop, % summerItems.Length() {
+        GuiControl, Show, SummerItem%A_Index%
+        
+    }
+return
+
+
+
+ShowSummerRecordSubTab:
+    HideAllSummerControls()
+    GuiControl, Show, PicHarvestTab
+    GuiControl, Hide, PicSummerShop
+
+    ; Show record tab controls ONLY
+    GuiControl, Show, SummerRecord
+    GuiControl, Show, SummerTest
+    GuiControl, Show, SummerLoad
+    GuiControl, Show, SummerF4
+    GuiControl, Show, autoSummerHarvest
+    GuiControl, Show, numberOfCycleLabel
+    GuiControl, Show, numberOfCycle
+    GuiControl, Show, saveCycle
+    GuiControl, Show, collectMethodLabel
+    GuiControl, Show, savedHarvestSpeed
+    GuiControl, Show, autosummerharvestext
+    GuiControl, Show, explanationtext
+    GuiControl, Show, explanationtext1
+    GuiControl, Show, explanationtext2
+    GuiControl, Show, explanationtext3
+
+return
+
+
 
 
 
