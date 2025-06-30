@@ -1100,14 +1100,14 @@ Loop, % seedItems.Length() {
 
     Loop, % gearItems.Length() {
         IniRead, gVal, %settingsFile%, Gear, Item%A_Index%, 0
-        if (A_Index > 8) {
+        if (A_Index > 9) {
             col := 373
-            idx := A_Index - 9
+            idx := A_Index - 10
             yBase := 192
         }
-        else if (A_Index > 3) {
+        else if (A_Index > 4) {
             col := 200
-            idx := A_Index - 4
+            idx := A_Index - 5
             yBase := 192
         
         }
