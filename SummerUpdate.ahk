@@ -24,6 +24,7 @@ global firstWindow := ""
 global instanceNumber
 global idDisplay := ""
 global started := 0
+global failCount := 0
 
 global cycleCount := 0
 global cycleFinished := 0
@@ -51,6 +52,7 @@ global summerAutoActive := 0
 global autoHoneyActive := 0
 global seedCraftingAutoActive := 0
 global bearCraftingAutoActive := 0
+global autoSummerHarvestActive := 0
 global cosmeticAutoActive := 0
 global lastSummerHour := -1
 global lastSummerShopMinute := -1
@@ -834,11 +836,6 @@ isFavoriteToggled(xRatio, yRatio, variation := 10, showMarker := false) {
 
     x := winX + Round(xRatio * winW)
     y := winY + Round(yRatio * winH)
-
-    /*
-    if (showMarker)
-        drawDebugBox(x, y, 5, 5) ; 5x5 box
-    */
 
     PixelGetColor, color, x, y, RGB
 
@@ -2075,6 +2072,22 @@ GetSelectedItems() {
     
 }
 
+DrawDebugBox(x1, y1, x2, y2, color := "Red") {
+    Gui, DebugBox:Destroy
+    Gui, DebugBox:+AlwaysOnTop +ToolWindow -Caption +LastFound +E0x20 ; E0x20 = click-through
+    Gui, DebugBox:Color, %color%
+    WinSet, Transparent, 50
+    
+    width := x2 - x1
+    height := y2 - y1
+    Gui, DebugBox:Show, x%x1% y%y1% w%width% h%height% NoActivate
+    SetTimer, RemoveDebugBox, -1500
+}
+
+RemoveDebugBox:
+    Gui, DebugBox:Destroy
+Return
+
 SaveAutoHoney:
     Gui, Submit, NoHide
     IniWrite, %AutoHoney%, %settingsFile%, AutoHoney, AutoHoneySetting
@@ -2441,9 +2454,7 @@ RunAutoBearCraft:
 Return
 
 autoCollectSummerHarvest:
-
-    ; Trigger only if it's not the first cycle, it's exactly minute 0, and a new hour
-    if (cycleCount > 0 && currentMinute = 0 && currentHour != lastSummerHarvestHour) {
+    if (cycleCount > 0 && currentMinute = 0 && Mod(currentHour, 1) = 0 && currentHour != lastSummerHarvestHour) {
         lastSummerHarvestHour := currentHour
         SetTimer, PushautoSummerHarvest, -8000
     }
@@ -2597,6 +2608,9 @@ SetTimers:
     }
     bearCraftingAutoActive := 1
     SetTimer, AutoBearCraft, 1000 ; checks every second if it should queue
+
+    autoSummerHarvestActive := 1
+    SetTimer, autoCollectSummerHarvest, 1000 ; checks every second if it should queue
     
 Return
 
@@ -2942,7 +2956,20 @@ GearShopPath:
             break
         }
         Sleep, 2000
+                if (!gearsCompleted) {
+            if (AutoAlign) {
+                GoSub, cameraChange
+                Sleep, 100
+                Gosub, zoomAlignment
+                Sleep, 100
+                GoSub, cameraAlignment
+                Sleep, 100
+                Gosub, characterAlignment
+                Sleep, 100
+                Gosub, cameraChange
+            }
     }
+}
 
     closeShop("gear", gearsCompleted)
     
@@ -3077,108 +3104,6 @@ SummerShopPath:
         Sleep, 2000
     }
 
-selectedSummerItems := []
-Loop, 12 {
-    IniRead, value, %A_ScriptDir%\settings.ini, Summer, Item%A_Index%, 0
-    if (value = 1)
-        selectedSummerItems.Push(A_Index)
-}
-
-        uiUniversal("3333335454550550333333")
-
-For index, item in selectedSummerItems {
-
-    if (item = 1) {
-        uiUniversal("3333333545455055454", 0)
-	currentItem := "Summer Seed Pack"
-        quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
-	Sleep, 100
-	uiUniversal("000000000063606", 0, 1)
-        Sleep, 100
-	SendDiscordMessage(webhookURL, "Attempted to buy " . currentItem . ".")
-        Sleep, 50
-    }
-    else if (item = 2) {
-	Send, \
-        uiUniversal("33333333354545454550554", 0)
-	currentItem := "Delphinium Seed"
-        quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
-	Sleep, 100
-	uiUniversal("000000000063606", 0, 1)
-        Sleep, 100
-	SendDiscordMessage(webhookURL, "Attempted to buy " . currentItem . ".")
-        Sleep, 50
-    }
-    else if (item = 3) {
-	Send, \
-        uiUniversal("333333545454545505503333333")
-        uiUniversal("333333333545454545450554", 0)
-	currentItem := "Lily Of The Valley Seed"
-        quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
-        Sleep, 100
-	uiUniversal("000000000063606", 0, 1)
-        Sleep, 100
-	SendDiscordMessage(webhookURL, "Attempted to buy " . currentItem . ".")
-        Sleep, 50
-    }
-    else if (item = 4) {
-	Send, \
-        uiUniversal("333333333354545454545450554", 0)
-	currentItem := "Travelers Fruit Seed"
-        quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
-        Sleep, 100
-	uiUniversal("000000000063606", 0, 1)
-        Sleep, 100
-	SendDiscordMessage(webhookURL, "Attempted to buy " . currentItem . ".")
-        Sleep, 50
-    }
-    else if (item = 5) {
-	Send, \
-        uiUniversal("33333333335454545454545450554", 0)
-	currentItem := "Mutation Spray Burnt"
-        quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
-        Sleep, 100
-	uiUniversal("000000000063606", 0, 1)
-        Sleep, 100
-	SendDiscordMessage(webhookURL, "Attempted to buy " . currentItem . ".")
-        Sleep, 150
-    }
-    else if (item = 6) {
-	Send, \
-        uiUniversal("333333333354545454545454545505454", 0)
-	currentItem := "Oasis Crate"
-        quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
-        Sleep, 100
-	uiUniversal("000000000063606", 0, 1)
-        Sleep, 100
-	SendDiscordMessage(webhookURL, "Attempted to buy " . currentItem . ".")
-        Sleep, 50
-    }
-    else if (item = 7) {
-	Send, \
-        uiUniversal("3333333333545454545454545454545505454", 0)
-	currentItem := "Oasis Egg"
-        quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
-        Sleep, 100
-	uiUniversal("000000000063606", 0, 1)
-        Sleep, 100
-	SendDiscordMessage(webhookURL, "Attempted to buy " . currentItem . ".")
-        Sleep, 50
-    }
-    else if (item = 8) {
-	Send, \
-        uiUniversal("33333333335454545454545454545454545054", 0)
-	currentItem := "Hampster"
-        quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
-        Sleep, 100
-	uiUniversal("000000000063606", 0, 1)
-        Sleep, 100
-	SendDiscordMessage(webhookURL, "Attempted to buy " . currentItem . ".")
-        Sleep, 50
-    }
-}
-
-
     if (!shopOpened) {
         SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect Summer Shop opening.", COLOR_ERROR, PingSelected)
         uiUniversal("63636362626263616161616363636262626361616161606561646056")
@@ -3196,7 +3121,41 @@ For index, item in selectedSummerItems {
     }
         Return
     }
+    ; shop opennig 
+    uiUniversal("63636361616464636363636161616464606056464", 0)
+    Sleep, 100
 
+    summerNames := ["Summer Seed Pack", "Delphinium Seed", "Lily Of The Valley Seed", "Traveler's Fruit Seed", "Mutation Spray Burnt", "Oasis Crate"
+                , "Oasis Egg", "Hamsterrrrrr"]
+
+    summerPaths := [ "6363636363636363636363636363636363636364646464636064646"
+                    , "636363636363636363636363636363636363636464646460646"
+                    , "63636363636363636363636363636363636363646464646460646"
+                    , "6363636363636363636363636363636363636364646464646460646"
+                    , "636363636363636363636363636363636363636464646464646460646"
+                    , "6363636363636363636363636363636363636364646464646464646064646"
+                    , "63636363636363636363636363636363636363646464646464646464646064646"
+                    , "6363636363636363636363636363636363636364646464646464646464646460646" ]
+
+    selectedSummerItems := []
+    Loop, % summerNames.Length()
+    {
+        IniRead, value, %A_ScriptDir%\settings.ini, Summer, Item%A_Index%, 0
+        if (value = 1)
+            selectedSummerItems.Push(A_Index)
+    }
+
+    for index, idx in selectedSummerItems {
+        currentItem := summerNames[idx]
+        path := summerPaths[idx]
+
+        uiUniversal(path, 0, 1)
+        quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
+        uiUniversal("3606", 0, 1)
+        Sleep, 300
+    }
+
+    SendDiscordMessage(webhookURL, "Summer Shop Has Now Been Closed.")
 	summerCompleted := true
     if (summerCompleted) {
         Sleep, 500
@@ -3494,9 +3453,13 @@ if (seedCraftActionQueue.Length() > 0) {
     }
     if (currentCraftingItem = 2) {
 	currentItem := "Aloe Vera Seed"
-	CraftShopUiFix()
+    uiUniversal("33333333")
+    Sleep, % FastMode ? 100 : 300
+    uiUniversal("515151545450505333333")
+    Sleep, % FastMode ? 100 : 300
+    uiUniversal("3333333545450505")
 
-        uiUniversal("33333333335454545450545505")
+        uiUniversal("333333333354545450545505")
 
 	Sleep, 100
 	searchItem("peace")
@@ -3526,7 +3489,7 @@ if (seedCraftActionQueue.Length() > 0) {
     if (currentCraftingItem = 3) {
         uiUniversal("3333333545450505")
 	currentItem := "Guanabana Seed"
-        uiUniversal("3333333333545454545450545505")
+        uiUniversal("33333333335454545450545505")
 
 	Sleep, 100
 	searchItem("bamboo")
