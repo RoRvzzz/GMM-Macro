@@ -45,7 +45,7 @@ An automation macro for the Roblox game "Grow a Garden" that helps streamline ga
 5. Start the automation
 
 ## ⚠️ Important Notes
-Q
+
 - Always extract files before running - do not execute from within ZIP archives
 - The macro may malfunction if the Recall Wrench is not in slot 2
 - Speed bonuses from pets will disrupt macro timing
@@ -62,3 +62,5 @@ This macro is designed for educational and convenience purposes. Users are respo
 
 ---
 *Last updated: June 2025*
+
+pls do not skid vro :broken_heart:
