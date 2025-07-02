@@ -353,7 +353,7 @@ uiUniversal(order := 0, exitUi := 1, continuous := 0, spam := 0, spamCount := 30
 
     global SavedSpeed
     global SavedKeybind
-    global UINavigationFix
+
 
     global indexItem
     global currentArray
@@ -364,17 +364,7 @@ uiUniversal(order := 0, exitUi := 1, continuous := 0, spam := 0, spamCount := 30
 
     if (!continuous) {
         sendKeybind(SavedKeybind)
-        Sleep, 50
-        if (UINavigationFix) {
-            repeatKey("Up", 5, 50)
-            Sleep, 50
-            repeatKey("Left", 3, 50)
-            Sleep, 50
-            repeatKey("up", 5, 50)
-            Sleep, 50
-            repeatKey("Left", 3, 50)
-            Sleep, 50
-        }   
+        Sleep, 50   
     }  
 
     ; right = 1, left = 2, up = 3, down = 4, enter = 0, manual delay = 5
@@ -428,12 +418,6 @@ uiUniversal(order := 0, exitUi := 1, continuous := 0, spam := 0, spamCount := 30
             repeatKey(dir, sendCount)
             repeatKey("Enter")
             repeatKey(dir)
-            if ((currentArray.Name = "gearItems") && (index != 2) && (UINavigationFix)) {
-                repeatKey("Left")
-                }
-            else if ((currentArray.Name = "seedItems") && (UINavigationFix)) {
-                repeatKey("Left")
-            }
         }
 
     }
@@ -469,7 +453,6 @@ buyUniversal(itemType) {
     global currentSelectedArray
     global indexItem := ""
     global indexArray := []
-    global UINavigationFix
 
         SendDiscordMessage(webhookURL, "[Debug] buyUniversal", "Starting for item type: " . itemType, COLOR_INFO, false, true)
 
@@ -755,7 +738,6 @@ sendMessages() {
 
 quickDetectEgg(buyColor, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2Ratio := 1.0, y2Ratio := 1.0) {
 
-    global UINavigationFix
     global selectedEggItems
     global currentItem
 
@@ -1378,11 +1360,6 @@ Once it's all done, you can now start the macro and the Summer Harvest is now au
     multiInstanceColor := MultiInstanceMode ? "c90EE90" : "cD3D3D3"
     Gui, Add, Checkbox, % "x160 y299 w12 h12 vMultiInstanceMode gUpdateSettingColor " . multiInstanceColor . (MultiInstanceMode ? " Checked" : ""), Multi-Instance Mode
 
-    IniRead, UINavigationFix, %settingsFile%, Main, UINavigationFix, 0
-    uiNavigationFixColor := UINavigationFix ? "c90EE90" : "cD3D3D3"
-    Gui, Add, Checkbox, % "x140 y324 w12 h12 vUINavigationFix gUpdateSettingColor " . uiNavigationFixColor . (UINavigationFix ? " Checked" : ""), UI Navigation Fix
-
-
     Gui, Font, s8 cBlack, Segoe UI
     IniRead, savedWebhook, %settingsFile%, Main, UserWebhook
     if (savedWebhook = "ERROR") {
@@ -1945,7 +1922,6 @@ UpdateSettingColor:
     autoColor := "+c" . (AutoAlign ? "90EE90" : "D3D3D3")
     pingColor := "+c" . (PingSelected ? "90EE90" : "D3D3D3")
     multiInstanceColor := "+c" . (MultiInstanceMode ? "90EE90" : "D3D3D3")
-    uiNavigationFixColor := "+c" . (UINavigationFix ? "90EE90" : "D3D3D3")
 
     ; apply colors
     GuiControl, %autoColor%, AutoAlign
@@ -1956,9 +1932,6 @@ UpdateSettingColor:
 
     GuiControl, %multiInstanceColor%, MultiInstanceMode
     GuiControl, +Redraw, MultiInstanceMode
-
-    GuiControl, %uiNavigationFixColor%, UINavigationFix
-    GuiControl, +Redraw, UINavigationFix
     
 return
 
@@ -2787,13 +2760,6 @@ characterAlignment:
 
     sendKeybind(SavedKeybind)
     Sleep, 10
-
-    if (UINavigationFix) {
-        repeatKey("Left", 5)
-        Sleep, 10
-        repeatKey("Up", 5)
-        Sleep, 10
-    }
 
     repeatKey("Right", 3)
     Loop, % ((SavedSpeed = "Ultra") ? 12 : (SavedSpeed = "Max") ? 18 : 8) {
@@ -4540,7 +4506,6 @@ SaveSettings:
     IniWrite, %AutoAlign%, %settingsFile%, Main, AutoAlign
     IniWrite, %PingSelected%, %settingsFile%, Main, PingSelected
     IniWrite, %MultiInstanceMode%, %settingsFile%, Main, MultiInstanceMode
-    IniWrite, %UINavigationFix%, %settingsFile%, Main, UINavigationFix
     IniWrite, %BuyAllCosmetics%, %settingsFile%, Cosmetic, BuyAllCosmetics
     IniWrite, %SelectAllEggs%, %settingsFile%, Egg, SelectAllEggs
     IniWrite, %SelectAllSummer%, %settingsFile%, Summer, SelectAllSummer
