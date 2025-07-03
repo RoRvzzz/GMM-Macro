@@ -934,6 +934,52 @@ quickDetect(color1, color2, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2R
 
 }
 
+
+BuyOptionDetect(variation, x1Ratio := 0.0, y1Ratio := 0.0, x2Ratio := 1.0, y2Ratio := 1.0, colors*) {
+
+    CoordMode, Pixel, Screen
+    CoordMode, Mouse, Screen
+
+    ; limit search to specified area
+	WinGetPos, winX, winY, winW, winH, ahk_exe RobloxPlayerBeta.exe
+
+    x1 := winX + Round(x1Ratio * winW)
+    y1 := winY + Round(y1Ratio * winH)
+    x2 := winX + Round(x2Ratio * winW)
+    y2 := winY + Round(y2Ratio * winH)
+
+    ; Check each color
+    for index, color in colors {
+        PixelSearch, FoundX, FoundY, x1, y1, x2, y2, %color%, variation, Fast
+        if (ErrorLevel = 0) {
+            return true
+        }
+    }
+    return false
+}
+
+CheckAndCloseBuyOption() {
+    if (BuyOptionDetect(0, 0.35, 0.55, 0.46, 0.63, 0x26EE26, 0x646464, 0x1DB31D)) {     ; if u want to add another color,
+        ToolTip, Buy Option Detected...                                                 ; simply add it here lol, 
+        SetTimer, HideTooltip, -1500                                                    ; i used colors* to be easier
+        Sleep, 500                                                                      ; to change if u have to
+        BuyOptionClose()                                                                ; be careful there is lot of 
+        Sleep, 100                                                                      ; false positive, mostly with
+    } else {                                                                            ; the NO STOCK button so dont
+        ToolTip, Buy Option Was Not Detected.                                           ; change any color here if you 
+        SetTimer, HideTooltip, -1500                                                    ; dont know what u are doing
+        Sleep, 500                                                                      ; btw colors are in BGR format
+    }
+}
+
+BuyOptionClose() {
+    Sleep, 100
+    uiUniversal("333333223210") ; close buy option btw, most of it is just to make sure it starts from settings icon, the real part is 210
+    SendDiscordMessage(webhookURL, "Buy Option Detected.", "Buy Option Has Been Detected And Closed", COLOR_INFO)
+    Sleep, 100
+}
+
+
 ; item arrays
 
 seedItems := ["Carrot Seed", "Strawberry Seed", "Blueberry Seed"
@@ -2190,7 +2236,6 @@ StartScanMultiInstance:
             Sleep, 1000
         }
     }
-		
 
 Return
 
@@ -2858,6 +2903,7 @@ SeedShopPath:
                 SendDiscordMessage(webhookURL, "[Debug] SeedShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
         if (simpleDetect(0x00CCFF, 10, 0.54, 0.20, 0.65, 0.325)) {
             ToolTip, Seed Shop Opened
+            CheckAndCloseBuyOption()
             SetTimer, HideTooltip, -1500
             SendDiscordMessage(webhookURL, "Seed Shop Status", "Seed Shop Opened.", COLOR_INFO)
             Sleep, 200
@@ -2901,6 +2947,7 @@ GearShopPath:
                 SendDiscordMessage(webhookURL, "[Debug] GearShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
         if (simpleDetect(0x00CCFF, 10, 0.54, 0.20, 0.65, 0.325)) {
             ToolTip, Gear Shop Opened
+            CheckAndCloseBuyOption()
             SetTimer, HideTooltip, -1500
             SendDiscordMessage(webhookURL, "Gear Shop Status", "Gear Shop Opened.", COLOR_INFO)
             Sleep, 200
@@ -3028,7 +3075,8 @@ SummerShopPath:
         Sleep, 20
     }
     ; Talk To NPC
-    Send, e
+    Sleep, 250
+    Send, {e}
     Sleep, 1500
 
     ; Repositioning Camera View
@@ -3042,9 +3090,9 @@ SummerShopPath:
     }
     Sleep, 500
     SafeClickRelative(0.61, 0.43) ;use F4 to get the exact value of the right place for you
-    Sleep, 300
+    Sleep, 100
     SafeClickRelative(0.61, 0.46) ;use F4 to get the exact value of the right place for you
-    Sleep, 1500
+    Sleep, % FastMode ? 500 : 1500
     SendDiscordMessage(webhookURL, "Summer Cycle", "Starting summer buying cycle.", COLOR_INFO)
     Sleep, % FastMode ? 2500 : 5000
 
@@ -3053,6 +3101,7 @@ SummerShopPath:
         SendDiscordMessage(webhookURL, "[Debug] SummerShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
         if (simpleDetect(0xFAB312, 10, 0.54, 0.20, 0.65, 0.325) ) {
             shopOpened := true
+            CheckAndCloseBuyOption()
             ToolTip, Summer Shop Opened
             SetTimer, HideTooltip, -1500
         SendDiscordMessage(webhookURL, "Summer Shop Status", "Summer Shop Opened.", COLOR_INFO)
@@ -3064,7 +3113,7 @@ SummerShopPath:
 
     if (!shopOpened) {
         SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect Summer Shop opening.", COLOR_ERROR, PingSelected)
-        uiUniversal("63636362626263616161616363636262626361616161606561646056")
+        uiUniversal("3332223111133322231111501450")
 	summerShopFailed := true
     if (AutoAlign) {
         GoSub, cameraChange
@@ -3080,20 +3129,20 @@ SummerShopPath:
         Return
     }
     ; shop opennig 
-    uiUniversal("63636361616464636363636161616464606056464", 0)
+    uiUniversal("3331144333311144505044", 0)
     Sleep, 100
 
     summerNames := ["Summer Seed Pack", "Delphinium Seed", "Lily Of The Valley Seed", "Traveler's Fruit Seed", "Mutation Spray Burnt", "Oasis Crate"
-                , "Oasis Egg", "Hamsterrrrrr"]
+                , "Oasis Egg", "Hamster"]
 
-    summerPaths := [ "6363636363636363636363636363636363636364646464636064646"
-                    , "636363636363636363636363636363636363636464646460646"
-                    , "63636363636363636363636363636363636363646464646460646"
-                    , "6363636363636363636363636363636363636364646464646460646"
-                    , "636363636363636363636363636363636363636464646464646460646"
-                    , "6363636363636363636363636363636363636364646464646464646064646"
-                    , "63636363636363636363636363636363636363646464646464646464646064646"
-                    , "6363636363636363636363636363636363636364646464646464646464646460646" ]
+    summerPaths := [ "3333333333333333333444435044"
+                    , "33333333333333333334444504"
+                    , "333333333333333333344444504"
+                    , "3333333333333333333444444504"
+                    , "33333333333333333334444444504"
+                    , "3333333333333333333444444445044"
+                    , "333333333333333333344444444445044"
+                    , "3333333333333333333444444444444504" ]
 
     selectedSummerItems := []
     Loop, % summerNames.Length()
@@ -3109,7 +3158,7 @@ SummerShopPath:
 
         uiUniversal(path, 0, 1)
         quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
-        uiUniversal("3606", 0, 1)
+        uiUniversal("350", 0, 1)
         Sleep, 300
     }
 
@@ -3117,7 +3166,7 @@ SummerShopPath:
 	summerCompleted := true
     if (summerCompleted) {
         Sleep, 500
-        uiUniversal("52525252525252525055555506", 1, 1)
+        uiUniversal("3333333333333322225006", 1, 1)
         Sleep, 120          ; in case a robux prompt
         Send, {Escape}
         Sleep, 80
