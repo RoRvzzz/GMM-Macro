@@ -18,14 +18,14 @@ Permission is hereby granted to any user who obtains a copy of this software and
 4. IMPLIED LICENSE AGREEMENT  
    By downloading, installing, running, or redistributing the Software, you agree to these terms without needing to sign or acknowledge them explicitly.
 
-5. CLOSED SOURCE REQUIREMENT  
-   The source code of this Software may be private. No user or entity has the right to demand access. Release of the source code remains entirely at the discretion of the author.
+5. OPEN SOURCE REQUIREMENT
+This Software is distributed as open source. Any contributions, modifications, or forks made by third parties must also remain public and accessible. Contributors are not permitted to make private or closed-source versions of this Software or its derivatives. By contributing, you agree to keep your changes open and available under the same license terms.
 
 6. DISCLAIMER OF LIABILITY  
    The Software is provided “as is” with no guarantees or warranties. The author is not liable for any damage, loss, or malfunction resulting from its use.
 
-7. ATTRIBUTION MISREPRESENTATION  
-   Redistribution or modification of the Software under a false identity or without proper credit to the original author is strictly prohibited.
+**7. ATTRIBUTION MISREPRESENTATION  
+   Redistribution or modification of the Software under a false identity or without proper credit to the original author is strictly prohibited.**
 
 8. SUPPORT & UPDATE POLICY  
    Support or updates are not guaranteed. The author may alter, pause, or cease support or development without notice.
