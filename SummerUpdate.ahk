@@ -308,6 +308,17 @@ showPopupMessage(msgText := "nil", duration := 2000) {
 
 SafeMoveRelative(xRatio, yRatio) {
 
+    global safeMoveDepth
+    safeMoveDepth++
+    if (safeMoveDepth > 10) {
+        ToolTip, Infinite SafeMoveRelative recursion detected.
+        SendDiscordMessage(webhookURL, "Infinite SafeMoveRelative recursion detected.")
+        Sleep, 1500
+        ToolTip
+        safeMoveDepth--
+        return
+    }
+
     if WinExist("ahk_exe RobloxPlayerBeta.exe") {
         WinGetPos, winX, winY, winW, winH, ahk_exe RobloxPlayerBeta.exe
         moveX := winX + Round(xRatio * winW)
@@ -315,6 +326,7 @@ SafeMoveRelative(xRatio, yRatio) {
         MouseMove, %moveX%, %moveY%
     }
 
+    safeMoveDepth--
 }
 
 SafeClickRelative(xRatio, yRatio) {
