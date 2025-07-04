@@ -1019,18 +1019,18 @@ RunDiagnostics:
     errorMessages := ""
     criticalErrors := false
     
-    ; Check 1: Running from a temporary folder (ZIP check)
+
     if InStr(A_ScriptDir, A_Temp) {
         errorMessages .= "- Macro is running from a temporary folder. Please extract all files from the archive before running.`n"
     }
     
-    ; Check 2: Roblox Process
+
     Process, Exist, RobloxPlayerBeta.exe
     if (!ErrorLevel) {
         errorMessages .= "- Roblox process not found. Please open Roblox before using the macro.`n"
     }
     
-    ; Check 3: AHK version compatibility
+
     if (SubStr(A_AhkVersion, 1, 1) = "2") {
         errorMessages .= "- This script requires AutoHotkey v1.1, but you are running v2. Please install AHK v1.1.`n"
         criticalErrors := true
@@ -1038,12 +1038,12 @@ RunDiagnostics:
         errorMessages .= "- Outdated AHK v1 version (" . A_AhkVersion . ") detected. Please update to the latest v1.1 release.`n"
     }
     
-    ; Check 5: DPI Scaling Check
+
     if (A_ScreenDPI != 96 && A_ScreenDPI != 144) { ; 100% or 125%
         errorMessages .= "- Uncommon DPI scaling detected (" . A_ScreenDPI . " DPI). Please set display scaling to 100% or 125% or 150% in Windows settings.`n"
     }
     
-    ; Check 7: Screen Resolution
+
     is16x9 := (A_ScreenWidth * 9 = A_ScreenHeight * 16)
     if (!is16x9) {
         errorMessages .= "- Unsupported screen resolution (" . A_ScreenWidth . "x" . A_ScreenHeight . "). A 16:9 aspect ratio is required (e.g., 1920x1080, 2560x1440).`n"
@@ -1051,7 +1051,7 @@ RunDiagnostics:
     
     SplashTextOff
     
-    ; Keyboard Layout Check from diagnostic tool
+
     hkl := DllCall("GetKeyboardLayout", "UInt", 0)
     layoutID := hkl & 0xFFFF
     layoutHex := Format("{:04X}", layoutID)
