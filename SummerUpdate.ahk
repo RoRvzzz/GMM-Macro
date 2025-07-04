@@ -1010,42 +1010,39 @@ seedCraftingItems := ["Peace Lily Seed", "Aloe Vera Seed", "Guanabana Seed"]
 settingsFile := A_ScriptDir "\settings.ini"
 
 ;Gosub, RunDiagnostics
-
 Gosub, ShowGui
 Return
-
 ; main ui
-
 RunDiagnostics:
     SplashTextOn, 200, 30, GAG MACRO, Running diagnostics...
     Sleep, 500 ; Give it a moment to display
-
     errorMessages := ""
-
+    criticalErrors := false
+    
     ; Check 1: Running from a temporary folder (ZIP check)
     if InStr(A_ScriptDir, A_Temp) {
         errorMessages .= "- Macro is running from a temporary folder. Please extract all files from the archive before running.`n"
     }
-
+    
     ; Check 2: Roblox Process
     Process, Exist, RobloxPlayerBeta.exe
     if (!ErrorLevel) {
         errorMessages .= "- Roblox process not found. Please open Roblox before using the macro.`n"
     }
-
+    
     ; Check 3: AHK version compatibility
     if (SubStr(A_AhkVersion, 1, 1) = "2") {
         errorMessages .= "- This script requires AutoHotkey v1.1, but you are running v2. Please install AHK v1.1.`n"
+        criticalErrors := true
     } else if (A_AhkVersion < "1.1.33") {
         errorMessages .= "- Outdated AHK v1 version (" . A_AhkVersion . ") detected. Please update to the latest v1.1 release.`n"
     }
-
+    
     ; Check 5: DPI Scaling Check
-    if (A_ScreenDPI != 96 && A_ScreenDPI != 120) { ; 100% or 125%
-        errorMessages .= "- Uncommon DPI scaling detected (" . A_ScreenDPI . " DPI). Please set display scaling to 100% or 125% in Windows settings.`n"
+    if (A_ScreenDPI != 96 && A_ScreenDPI != 144) { ; 100% or 125%
+        errorMessages .= "- Uncommon DPI scaling detected (" . A_ScreenDPI . " DPI). Please set display scaling to 100% or 125% or 150% in Windows settings.`n"
     }
-
-
+    
     ; Check 7: Screen Resolution
     is16x9 := (A_ScreenWidth * 9 = A_ScreenHeight * 16)
     if (!is16x9) {
@@ -1059,17 +1056,25 @@ RunDiagnostics:
     layoutID := hkl & 0xFFFF
     layoutHex := Format("{:04X}", layoutID)
     if (layoutHex != "0409") { ; Not English (United States)
-        MsgBox, 64, Keyboard Layout Warning, Current keyboard layout is not English (US) (ID: 0x%layoutHex%). This can sometimes cause unexpected behavior.`n`nIt is recommended to switch to an 'English (United States)' layout.`n`nPress OK to continue.
+        MsgBox, 4, Keyboard Layout Warning, Current keyboard layout is not English (US) (ID: 0x%layoutHex%). This can sometimes cause unexpected behavior.`n`nIt is recommended to switch to an 'English (United States)' layout.`n`nClick YES to continue anyway, or NO to exit.
+        IfMsgBox No
+            ExitApp
     }
-
+    
     if (errorMessages != "") {
-        MsgBox, 16, Diagnostic Failed, The following issues were found:`n`n%errorMessages%
-        ExitApp
+        if (criticalErrors) {
+            ; Critical errors that really shouldn't be skipped
+            MsgBox, 16, Critical Issues Found, The following critical issues were found:`n`n%errorMessages%`n`nThese issues will likely cause the macro to fail completely.
+            ExitApp
+        } else {
+            ; Non-critical warnings that can be skipped
+            MsgBox, 4, Diagnostic Warnings, The following issues were found:`n`n%errorMessages%`n`nThese may cause the macro to not work properly.`n`nClick YES to continue anyway, or NO to exit.
+            IfMsgBox No
+                ExitApp
+        }
     }
-
 
 Return
-
 ShowGui:
     Gui, Destroy
     Gui, -MinimizeBox -Caption
