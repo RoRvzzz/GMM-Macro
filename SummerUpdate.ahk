@@ -994,11 +994,12 @@ BuyOptionClose() {
 
 ; item arrays
 
-seedItems := ["Carrot Seed", "Strawberry Seed", "Blueberry Seed"
-             , "Tomato Seed", "Cauliflower Seed", "Watermelon Seed", "Rafflesia Seed"
-             , "Green Apple Seed", "Avacado Seed", "Banana Seed", "Pineapple Seed"
-             , "Kiwi Seed", "Bell Pepper Seed", "Prickly Pear Seed", "Loquat Seed"
-             , "Feijoa Seed", "Pitcher Plant Seed", "Sugar Apple Seed"] ;
+seedItems := ["Carrot Seed", "Strawberry Seed", "Blueberry Seed", "Orange Tulip"
+             , "Tomato Seed", "Daffodil Seed", "Watermelon Seed"
+             , "Pumpkin Seed", "Apple Seed", "Bamboo Seed", "Coconut Seed"
+             , "Cactus Seed", "Dragon Fruit Seed", "Mango Seed", "Grape Seed"
+             , "Mushroom Seed", "Pepper Seed", "Cacao Seed"
+	     , "Beanstalk Seed", "Ember Lily Seed", "Sugar Apple Seed", "Burning Bud Seed"] ;
 
 gearItems := ["Watering Can", "Trowel", "Recall Wrench", "Basic Sprinkler", "Advanced Sprinkler"
              , "Godly Sprinkler", "Magnifying Glass", "Tanning Mirror", "Master Sprinkler", "Cleaning Spray", "Favorite Tool", "Harvest Tool", "Friendship Pot"]
@@ -1105,16 +1106,16 @@ ShowGui:
     Gui, Add, CheckBox, % "x391 y135 w12 h12 vSelectAllSeeds gHandleSelectAll -Theme Background3C3C3C " . (SelectAllSeeds ? "Checked" : "")
     
 
-Loop, % seedItems.Length() {
+	Loop, % seedItems.Length() {
         IniRead, sVal, %settingsFile%, Seed, Item%A_Index%, 0
-        if (A_Index > 12) {
+        if (A_Index > 14) {
             col := 369
-            idx := A_Index - 13
+            idx := A_Index - 15
             yBase := 183
         }
-        else if (A_Index > 6) {
+        else if (A_Index > 7) {
             col := 198
-            idx := A_Index - 7
+            idx := A_Index - 8
             yBase := 183
 
         }
@@ -1123,7 +1124,7 @@ Loop, % seedItems.Length() {
             idx := A_Index
             yBase := 143
         }
-        y := yBase + (idx * 40)
+        y := yBase + (idx * 30)
         Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vSeedItem" A_Index " gHandleSelectAll cD3D3D3 " . (sVal ? "Checked" : ""), 
 
     }
