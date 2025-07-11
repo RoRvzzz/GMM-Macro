@@ -54,7 +54,7 @@ An automation macro for the Roblox game "Grow a Garden" that helps streamline ga
 ## 💬 Support
 
 Join our Discord community for support, updates, and discussions:
-**Discord Server**: https://discord.gg/gagmacros (if discord is banned where you live please open an issue on github)
+**Discord Server**: https://discord.gg/gagmacros
 
 ## 📝 Disclaimer
 

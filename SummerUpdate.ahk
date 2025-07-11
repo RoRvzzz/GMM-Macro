@@ -8,6 +8,8 @@ SetMouseDelay, -1
 SetWinDelay, -1
 SetControlDelay, -1
 SetBatchLines, -1   
+global screenHeight := A_ScreenHeight
+global screenWidth  := A_ScreenWidth 
 
 ; globals
 
@@ -48,87 +50,34 @@ global msgBoxCooldown := 0
 global gearAutoActive := 0
 global seedAutoActive := 0
 global eggAutoActive  := 0
-global summerAutoActive := 0
 global autoHoneyActive := 0
 global seedCraftingAutoActive := 0
 global bearCraftingAutoActive := 0
-global autoSummerHarvestActive := 0
+global dinosaurCraftingAutoActive := 0
 global cosmeticAutoActive := 0
-global lastSummerHour := -1
-global lastSummerShopMinute := -1
+global autoSumbitAutoActive := 0
+global currentSlotQueue := -1
+global endOfSlotQueue := -1
+global startingPointOfAutoEgg
+global isFirstRun := false
+global lastAutoEggCheck := ""
 
 global bearCraftingLocked := 0
 global seedCraftingLocked := 0
+global dinosaurCraftingLocked := 0
 
-global summerShopFailed := false
 
 global actionQueue := []
 global seedCraftActionQueue := []
 global bearCraftActionQueue := []
+global dinosaurCraftActionQueue := []
 
-settingsFile := A_ScriptDir "\settings.ini"
-mainDir := A_ScriptDir . "\Images\"
-subTabcosmeticpath := mainDir . "rbx background CosmeticShop.PNG"
-subTabSeedPath  := mainDir . "background seedcaft subtab.PNG"
-subTabBearPath  := mainDir . "background bearcraft subtab.PNG"
+global autoReconnectLocked := 0
+global shopFailCount := 0
 
-subTabSummerSelectPath := mainDir . "background summer shop.PNG"
-subTabSummerRecordPath := mainDir . "background harvest tab.PNG"
-
-BuyAllCosmetics := ["A", "B", "C"]
-seedCraftingItems := ["X", "Y"]
-bearCraftingItems := ["L", "M"]
-
-
-
-HideAllCheckboxSets() {
-    global BuyAllCosmetics, seedCraftingItems, bearCraftingItems, AutoHoney
-
-
-    GuiControl, Hide, AutoHoney
-    GuiControl, Hide, BuyAllCosmetics
-
-    Loop, % BuyAllCosmetics.Length()
-        GuiControl, Hide, % "BuyAllCosmetics" A_Index
-
-    Loop, % seedCraftingItems.Length()
-        GuiControl, Hide, % "SeedCraftingItem" A_Index
-            GuiControl, Hide, SeedCraftLockLabel
-        GuiControl, Hide, ManualSeedCraftLock
-
-    Loop, % bearCraftingItems.Length()
-        GuiControl, Hide, % "BearCraftingItem" A_Index
-        GuiControl, Hide, BearCraftLockLabel
-        GuiControl, Hide, ManualBearCraftLock
-
-}
-HideAllSummerControls() {
-    global summerItems
-    GuiControl, Hide, SelectAllSummer
-    Loop, % summerItems.Length() {
-        GuiControl, Hide, SummerItem%A_Index%
-    }
-    GuiControl, Hide, SummerRecord
-    GuiControl, Hide, SummerTest
-    GuiControl, Hide, SummerLoad
-    GuiControl, Hide, SummerF4
-    GuiControl, Hide, autoSummerHarvest
-    GuiControl, Hide, numberOfCycleLabel
-    GuiControl, Hide, numberOfCycle
-    GuiControl, Hide, saveCycle
-    GuiControl, Hide, collectMethodLabel
-    GuiControl, Hide, savedHarvestSpeed
-    GuiControl, Hide, autosummerharvestext
-    GuiControl, Hide, explanationtext
-    GuiControl, Hide, explanationtext1
-    GuiControl, Hide, explanationtext2
-    GuiControl, Hide, explanationtext3
-
-}
-
-
-
-
+settingsFile    := A_ScriptDir "\Settings\settings.ini"
+mainDir         := A_ScriptDir "\GUI\Images\"
+debugFile       := A_ScriptDir "\Settings\debug.txt"
 
 
 global currentShop := ""
@@ -308,17 +257,6 @@ showPopupMessage(msgText := "nil", duration := 2000) {
 
 SafeMoveRelative(xRatio, yRatio) {
 
-    global safeMoveDepth
-    safeMoveDepth++
-    if (safeMoveDepth > 10) {
-        ToolTip, Infinite SafeMoveRelative recursion detected.
-        SendDiscordMessage(webhookURL, "Infinite SafeMoveRelative recursion detected.")
-        Sleep, 1500
-        ToolTip
-        safeMoveDepth--
-        return
-    }
-
     if WinExist("ahk_exe RobloxPlayerBeta.exe") {
         WinGetPos, winX, winY, winW, winH, ahk_exe RobloxPlayerBeta.exe
         moveX := winX + Round(xRatio * winW)
@@ -326,7 +264,6 @@ SafeMoveRelative(xRatio, yRatio) {
         MouseMove, %moveX%, %moveY%
     }
 
-    safeMoveDepth--
 }
 
 SafeClickRelative(xRatio, yRatio) {
@@ -365,7 +302,7 @@ uiUniversal(order := 0, exitUi := 1, continuous := 0, spam := 0, spamCount := 30
 
     global SavedSpeed
     global SavedKeybind
-
+    global UINavigationFix
 
     global indexItem
     global currentArray
@@ -376,7 +313,17 @@ uiUniversal(order := 0, exitUi := 1, continuous := 0, spam := 0, spamCount := 30
 
     if (!continuous) {
         sendKeybind(SavedKeybind)
-        Sleep, 50   
+        Sleep, 50
+        if (UINavigationFix) {
+            repeatKey("Up", 5, 50)
+            Sleep, 50
+            repeatKey("Left", 3, 50)
+            Sleep, 50
+            repeatKey("up", 5, 50)
+            Sleep, 50
+            repeatKey("Left", 3, 50)
+            Sleep, 50
+        }   
     }  
 
     ; right = 1, left = 2, up = 3, down = 4, enter = 0, manual delay = 5
@@ -416,9 +363,9 @@ uiUniversal(order := 0, exitUi := 1, continuous := 0, spam := 0, spamCount := 30
         previousIndex := findIndex(currentArray, indexItem)
         sendCount := index - previousIndex
 
-        FileAppend, % "index: " . index . "`n", debug.txt
-        FileAppend, % "previusIndex: " . previousIndex . "`n", debug.txt
-        FileAppend, % "currentarray: " . currentArray.Name . "`n", debug.txt
+        FileAppend, % "index: " . index . "`n", %debug%
+        FileAppend, % "previusIndex: " . previousIndex . "`n", %debug%
+        FileAppend, % "currentarray: " . currentArray.Name . "`n", %debug%
 
         if (dir = "up") {
             repeatKey(dir)
@@ -426,10 +373,16 @@ uiUniversal(order := 0, exitUi := 1, continuous := 0, spam := 0, spamCount := 30
             repeatKey(dir, sendCount)
         }
         else if (dir = "down") {
-            FileAppend, % "sendCount: " . sendCount . "`n", debug.txt
+            FileAppend, % "sendCount: " . sendCount . "`n", %debug%
             repeatKey(dir, sendCount)
             repeatKey("Enter")
             repeatKey(dir)
+            if ((currentArray.Name = "gearItems") && (index != 2) && (UINavigationFix)) {
+                repeatKey("Left")
+                }
+            else if ((currentArray.Name = "seedItems") && (UINavigationFix)) {
+                repeatKey("Left")
+            }
         }
 
     }
@@ -465,6 +418,7 @@ buyUniversal(itemType) {
     global currentSelectedArray
     global indexItem := ""
     global indexArray := []
+    global UINavigationFix
 
         SendDiscordMessage(webhookURL, "[Debug] buyUniversal", "Starting for item type: " . itemType, COLOR_INFO, false, true)
 
@@ -520,10 +474,11 @@ repeatKey(key := "nil", count := 1, delay := 30) {
 
     Loop, %count% {
         Send {%key%}
-        Sleep, % (SavedSpeed = "Ultra" ? (delay - 25) : SavedSpeed = "Max" ? (delay - 30) : delay)
+        Sleep, % (SavedSpeed = "Ultra" ? (delay - 25) : SavedSpeed = "Max" ? (delay - 35) : delay)
     }
 
 }
+
 
 sendKeybind(keybind) {
 
@@ -544,13 +499,118 @@ sleepAmount(fastTime, slowTime) {
 
 }
 
+; if u dont understand how this work, ask me (X6 M) and i will explain.
+                            ; path for people using 720p lol
+adaptiveUniversal(path, path720 := "", exitUi := 1, continuous := 0) {
+    global screenHeight
+    if (screenHeight = 720 && path720 != "") {
+        uiUniversal(path720, exitUi, continuous)
+    } else {
+        uiUniversal(path, exitUi, continuous)
+    }
+}
+
+
+SelectEquipGive() {
+    Sleep, 250
+    uiUniversal("222444444423333115052444444505")
+    Sleep, 150
+    Send, {vkC0sc029}
+    Sleep, 150
+    SendRaw, 1
+    Sleep, 100
+    Send, {e}
+    Sleep, 250
+}
+                                                                    ; only used for alignment, never set this parameter to 1 if its NOT for alignment
+searchItem(search := "nil", exitui := 0, seed := 0, fruit := 0, alignment := 0) {
+    global SavedKeybind
+
+    if (search = "nil") {
+        Return
+    }   
+                    ; this one only run if the parameter alignment is set to 1
+    if (search = "recall" && alignment) {
+        uiUniversal("102222444444423333115052444444122224444444150522223", 1)
+        Sleep, 100
+        Send, {vkC0sc029}
+        Sleep, 200
+    }
+
+    uiUniversal("1011143333333333333333333311440", 0)
+    Sleep, 50
+    typeString(search)
+    Sleep, 50
+
+    if (search = "recall") {
+        uiUniversal("2224444444233331150524444441505", 1, 1)
+    }
+
+    if (search = "uncommon.egg" || search = "anti.bee") {
+        uiUniversal("222444444233331150524444441505", 1, 1)
+        Sleep, 150
+    }   ; put them on the slot 2 of the hotbar, based on the bear crafting recipe selected
+
+    if (seed) {     ; to select the seed filter
+        adaptiveUniversal("11112222222244505", "333333222214505", 0, 1)
+        Sleep, 150
+    }
+
+    if (fruit) {     ; to select the fruit filter
+        adaptiveUniversal("111122222222444505", "3333332222144505", 0, 1) 
+        Sleep, 150
+    }
+
+    uiUniversal(10)
+
+    if (exitui) {
+        Send, {%SavedKeybind%}
+    }
+
+    Sleep, 150
+}
+
+typeString(string, enter := 1, clean := 1) {
+    if (string = "") {
+        Return
+    }
+
+    if (clean) {
+        Send {Backspace 25}
+        Sleep, 35
+    }
+
+    Loop, Parse, string
+    {
+        char := A_LoopField
+        if (char = " ") {
+            Send, {Space}
+        } else if (char = "{") {
+            Send, {{}
+        } else if (char = "}") {
+            Send, {}}
+        } else if (char ~= "[+^#!]") {
+            Send, {%char%}
+        } else {
+            Send, %char%
+        }
+        Sleep, 35
+    }
+
+    if (enter) {
+        Send, {Enter}
+    }
+
+    Return
+}
+
 findIndex(array := "", value := "", returnValue := "int") {
     
-    FileAppend, % "Searching " . array.Name . " for " . value . "`n", debug.txt
+    FileAppend, % "Searching " . array.Name . " for " . value . "`n", %debug%
 
     for index, item in array {
         if (value = item) {
-            FileAppend, % "found " . value . " at index " . index "`n", debug.txt
+            FileAppend, % "found " . value . " at index " . index "`n", %debug%
             if (returnValue = "int") {
                 return index
             }
@@ -569,69 +629,6 @@ findIndex(array := "", value := "", returnValue := "int") {
 
 }
 
-searchItem(search := "nil") {
-
-    global UINavigationFix
-
-    if(search = "nil") {
-        Return
-    }
-    
-    ;with UINavigationFix
-    if (UINavigationFix) {
-        uiUniversal("150524150505305", 0) 
-        typeString(search)
-        Sleep, 50
-
-        if (search = "recall") {
-            if (isFavoriteToggled(0.568, 0.565)){
-                uiUniversal("2255055211550554155055", 1, 1)
-            }
-            else{
-                uiUniversal("22211550554155055", 1, 1)
-            }
-        }
-        uiUniversal(10)
-    }
-    else { ;without UINavigationFix
-        uiUniversal("1011143333333333333333333311440", 0)
-        Sleep, 50      
-        typeString(search)
-        Sleep, 50
-
-        if (search = "recall") {
-            uiUniversal("22211550554155055", 1, 1)
-        }
-
-        uiUniversal(10)
-    }
-
-}
-
-typeString(string, enter := 1, clean := 1) {
-
-    if (string = "") {
-        Return
-    }
-
-    if (clean) {
-        Send {BackSpace 20}
-        Sleep, 100
-    }
-
-    Loop, Parse, string
-    {
-        Send, {%A_LoopField%}
-        Sleep, 100
-    }
-
-    if (enter) {
-        Send, {Enter}
-    }
-
-    Return
-
-}
 
 dialogueClick(shop) {
 
@@ -651,6 +648,9 @@ dialogueClick(shop) {
 
     if (shop = "gear") {
         SafeClickRelative(midX + 0.4, midY - 0.1)
+    }
+    else if(shop = "place3") {
+        SafeClickRelative(midX + 0.4, midY + 0.2)
     }
 
     Sleep, 500
@@ -680,13 +680,12 @@ closeRobuxPrompt() {
 
     Loop, 4 {
         Send {Escape}
-        Sleep, 100
+        Sleep, 150
     }
 
 }
 
 getWindowIDS(returnIndex := 0) {
-
     global windowIDS
     global idDisplay
     global firstWindow
@@ -697,19 +696,23 @@ getWindowIDS(returnIndex := 0) {
 
     WinGet, robloxWindows, List, ahk_exe RobloxPlayerBeta.exe
 
+    if (robloxWindows == 0) {
+        return false
+    }
+
     Loop, %robloxWindows% {
         windowIDS.Push(robloxWindows%A_Index%)
         idDisplay .= windowIDS[A_Index] . ", "
     }
 
-    firstWindow := % windowIDS[1]
-
+    firstWindow := windowIDS[1]
     StringTrimRight, idDisplay, idDisplay, 2
 
     if (returnIndex) {
         Return windowIDS[returnIndex]
     }
-    
+
+    return true
 }
 
 closeShop(shop, success) {
@@ -719,16 +722,16 @@ closeShop(shop, success) {
     if (success) {
 
         Sleep, 500
-        uiUniversal("4330320", 1, 1)
+        uiUniversal("4422222250505111111320", 1, 1)
 
     }
     else {
-
+        Sleep, 500
+        shopOpened := false
         ToolTip, % "Error In Detecting " . shop
         SetTimer, HideTooltip, -1500
         SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect " . shop . " shop opening.", COLOR_ERROR, PingSelected)
-        ; failsafe
-        uiUniversal("3332223111133322231111054105")
+        adaptiveUniversal("333222311113332223111105222222505", "3332223325050531111505")
 
     }
 
@@ -750,6 +753,7 @@ sendMessages() {
 
 quickDetectEgg(buyColor, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2Ratio := 1.0, y2Ratio := 1.0) {
 
+    global UINavigationFix
     global selectedEggItems
     global currentItem
 
@@ -757,12 +761,12 @@ quickDetectEgg(buyColor, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2Rati
     isSelected := 0
 
     eggColorMap := Object()
-    eggColorMap["Common Egg"]    	:= "0xFFFFFF"
-    eggColorMap["Uncommon Egg"]  	:= "0x81A7D3"
-    eggColorMap["Rare Egg"]      	:= "0xBB5421"
-    eggColorMap["Legendary Egg"] 	:= "0x2D78A3"
-    eggColorMap["Mythical Egg"]  	:= "0x00CCFF"
-    eggColorMap["Bug Egg"]       	:= "0x86FFD5"
+    eggColorMap["Common Egg"]    	    := "0xFFFFFF"
+    eggColorMap["Uncommon Egg"]  	    := "0x81A7D3"
+    eggColorMap["Rare Egg"]      	    := "0xBB5421"
+    eggColorMap["Legendary Egg"] 	    := "0x2D78A3"
+    eggColorMap["Mythical Egg"]  	    := "0x00CCFF"
+    eggColorMap["Bug Egg"]       	    := "0x86FFD5"
     eggColorMap["Common Summer Egg"]    := "0x00FFFF"
     eggColorMap["Rare Summer Egg"]      := "0xFFFFAA"
     eggColorMap["Paradise Egg"]         := "0x32CDFF"
@@ -797,12 +801,7 @@ quickDetectEgg(buyColor, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2Rati
                         SetTimer, HideTooltip, -1500
                         SendDiscordMessage(webhookURL, "Item Out of Stock", currentItem . " was not in stock.", COLOR_INFO)
                     }
-                    if (UINavigationFix) {
-                        uiUniversal(3140, 1, 1)
-                    }
-                    else {
-                        uiUniversal(1105, 1, 1)
-                    }
+                    uiUniversal(1105, 1, 1)
                     eggsCompleted = 1
                     break
                 }
@@ -819,25 +818,56 @@ quickDetectEgg(buyColor, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2Rati
         uiUniversal(5, 1, 1)
         ToolTip, Error In Detection
         SetTimer, HideTooltip, -1500
-        SendDiscordMessage(webhookURL, "Egg Detection Error", "Failed to detect any egg after 5 attempts.", COLOR_ERROR, PingSelected)
+        SendDiscordMessage(webhookURL, "Egg Detection Error", "Failed to detect any egg.", COLOR_ERROR, PingSelected)
     }
 
 }
 
-isFavoriteToggled(xRatio, yRatio, variation := 10, showMarker := false) {
+BuyOptionDetect(variation, x1Ratio := 0.0, y1Ratio := 0.0, x2Ratio := 1.0, y2Ratio := 1.0, colors*) {
+
     CoordMode, Pixel, Screen
-    WinGetPos, winX, winY, winW, winH, ahk_exe RobloxPlayerBeta.exe
+    CoordMode, Mouse, Screen
 
-    x := winX + Round(xRatio * winW)
-    y := winY + Round(yRatio * winH)
+    ; limit search to specified area
+	WinGetPos, winX, winY, winW, winH, ahk_exe RobloxPlayerBeta.exe
 
-    PixelGetColor, color, x, y, RGB
+    x1 := winX + Round(x1Ratio * winW)
+    y1 := winY + Round(y1Ratio * winH)
+    x2 := winX + Round(x2Ratio * winW)
+    y2 := winY + Round(y2Ratio * winH)
 
-    r := (color >> 16) & 0xFF
-    g := (color >> 8) & 0xFF
-    b := color & 0xFF
+    ; Check each color
+    for index, color in colors {
+        PixelSearch, FoundX, FoundY, x1, y1, x2, y2, %color%, variation, Fast
+        if (ErrorLevel = 0) {
+            ;PixelGetColor, foundColor, %FoundX%, %FoundY%
+            ;MouseMove, %FoundX%, %FoundY%, 10                      ; used for debug, u can ttry it for debug
+            ;ToolTip, Color %foundColor% found at %FoundX%, %FoundY%
+            ;Sleep, 1200
+        return true
+    }
+}
+return false
+}
 
-    return (Abs(r - 255) <= variation && Abs(g - 255) <= variation && Abs(b - 255) <= variation)
+CheckAndCloseBuyOption() {
+    Sleep, 80                       ; in the end they are the same lol :skull:
+    adaptiveUniversal("3333332221333333222215050523", "3333332221333333222215050523")
+    Sleep, 750         ; variation, x1Ratio, y1Ratio, x2Ratio, y2Ratio, colors*
+    if (BuyOptionDetect(0, 0.46, 0.55, 0.62, 0.63, 0xFF2D9F, 0xC02278)) { 
+        ToolTip, Buy Option Detected...  
+        SetTimer, HideTooltip, -1500    
+        Sleep, 500                          
+        BuyOptionClose()                  
+        Sleep, 200                            
+    }
+}
+
+BuyOptionClose() {
+    Sleep, 100
+    uiUniversal("3210")
+    SendDiscordMessage(webhookURL, "Buy Option Detected.", "Buy Option Has Been Detected And Closed", COLOR_INFO)
+    Sleep, 100
 }
 
 simpleDetect(colorInBGR, variation, x1Ratio := 0.0, y1Ratio := 0.0, x2Ratio := 1.0, y2Ratio := 1.0) {
@@ -872,7 +902,8 @@ quickDetect(color1, color2, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2R
     global UINavigationFix
     
     ; change to whatever you want to be pinged for
-    pingItems := []
+    pingItems := ["Beanstalk Seed", "Ember Lily", "Sugar Apple", "Burning Bud"
+                , "Master Sprinkler", "Bee Egg", "Paradise Egg", "Bug Egg"]
 
 	ping := false
 
@@ -930,7 +961,7 @@ quickDetect(color1, color2, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2R
                 uiUniversal(3140, 1, 1)
             }
             else {
-                uiUniversal(1105, 1, 1)
+                uiUniversal(505, 1, 1)
             }
             SendDiscordMessage(webhookURL, "Item Out of Stock", currentItem . " was not in stock.", COLOR_INFO)  
         }
@@ -946,117 +977,50 @@ quickDetect(color1, color2, variation := 10, x1Ratio := 0.0, y1Ratio := 0.0, x2R
 
 }
 
-
-BuyOptionDetect(variation, x1Ratio := 0.0, y1Ratio := 0.0, x2Ratio := 1.0, y2Ratio := 1.0, colors*) {
-
-    CoordMode, Pixel, Screen
-    CoordMode, Mouse, Screen
-
-    ; limit search to specified area
-	WinGetPos, winX, winY, winW, winH, ahk_exe RobloxPlayerBeta.exe
-
-    x1 := winX + Round(x1Ratio * winW)
-    y1 := winY + Round(y1Ratio * winH)
-    x2 := winX + Round(x2Ratio * winW)
-    y2 := winY + Round(y2Ratio * winH)
-
-    ; Check each color
-    for index, color in colors {
-        PixelSearch, FoundX, FoundY, x1, y1, x2, y2, %color%, variation, Fast
-        if (ErrorLevel = 0) {
-            return true
-        }
-    }
-    return false
-}
-
-CheckAndCloseBuyOption() {
-    if (BuyOptionDetect(0, 0.35, 0.55, 0.46, 0.63, 0x26EE26, 0x646464, 0x1DB31D)) {     ; if u want to add another color,
-        ToolTip, Buy Option Detected...                                                 ; simply add it here lol, 
-        SetTimer, HideTooltip, -1500                                                    ; i used colors* to be easier
-        Sleep, 500                                                                      ; to change if u have to
-        BuyOptionClose()                                                                ; be careful there is lot of 
-        Sleep, 100                                                                      ; false positive, mostly with
-    } else {                                                                            ; the NO STOCK button so dont
-        ToolTip, Buy Option Was Not Detected.                                           ; change any color here if you 
-        SetTimer, HideTooltip, -1500                                                    ; dont know what u are doing
-        Sleep, 500                                                                      ; btw colors are in BGR format
-    }
-}
-
-BuyOptionClose() {
-    Sleep, 100
-    uiUniversal("333333223210") ; close buy option btw, most of it is just to make sure it starts from settings icon, the real part is 210
-    SendDiscordMessage(webhookURL, "Buy Option Detected.", "Buy Option Has Been Detected And Closed", COLOR_INFO)
-    Sleep, 100
-}
-
-
 ; item arrays
 
-seedItems := ["Carrot Seed", "Strawberry Seed", "Blueberry Seed", "Orange Tulip"
-             , "Tomato Seed", "Daffodil Seed", "Watermelon Seed"
-             , "Pumpkin Seed", "Apple Seed", "Bamboo Seed", "Coconut Seed"
-             , "Cactus Seed", "Dragon Fruit Seed", "Mango Seed", "Grape Seed"
-             , "Mushroom Seed", "Pepper Seed", "Cacao Seed"
-	     , "Beanstalk Seed", "Ember Lily Seed", "Sugar Apple Seed", "Burning Bud Seed"] ;
+#Include %A_ScriptDir%\Settings\ItemsArrays.ahk
 
-gearItems := ["Watering Can", "Trowel", "Recall Wrench", "Basic Sprinkler", "Advanced Sprinkler"
-             , "Godly Sprinkler", "Magnifying Glass", "Tanning Mirror", "Master Sprinkler", "Cleaning Spray", "Favorite Tool", "Harvest Tool", "Friendship Pot"]
-
-eggItems := ["Common Egg", "Rare Summer Egg", "Bee Egg", "Common Summer Egg", "Paradise Egg", "Mythical Egg"
-             , "Bug Egg"]
-
-cosmeticItems := ["Cosmetic 1", "Cosmetic 2", "Cosmetic 3", "Cosmetic 4", "Cosmetic 5"
-             , "Cosmetic 6",  "Cosmetic 7", "Cosmetic 8", "Cosmetic 9"]
-
-summerItems := ["Summer Seed Pack", "Delphinium Seed", "Lily of the Valley Seed", "Travelers Fruit Seed", "Muatation Spray Burnt"
-	   , "Oasis Crate", "Oasis Egg", "Hamster"]
-
-bearCraftingItems := ["Lightning Rod", "Reclaimer", "Tropical Mist Sprinkler", "Berry Blusher Sprinkler", "Spice Spritzer Sprinkler", "Sweet Soaker Sprinkler"
-	  , "Flower Froster Sprinkler", "Stalk Sprout Sprinkler", "Mutation Spray Choc", "Mutation Spray Chilled", "Mutation Spray Shocked"
-	  , "Anti Bee Egg", "Pack Bee"]
-
-seedCraftingItems := ["Peace Lily Seed", "Aloe Vera Seed", "Guanabana Seed"]
-	
-
-settingsFile := A_ScriptDir "\settings.ini"
+settingsFile := A_ScriptDir "\Settings\settings.ini"
 
 ;Gosub, RunDiagnostics
+
 Gosub, ShowGui
 Return
+
 ; main ui
+
 RunDiagnostics:
     SplashTextOn, 200, 30, GAG MACRO, Running diagnostics...
     Sleep, 500 ; Give it a moment to display
-    errorMessages := ""
-    criticalErrors := false
-    
 
+    errorMessages := ""
+
+    ; Check 1: Running from a temporary folder (ZIP check)
     if InStr(A_ScriptDir, A_Temp) {
         errorMessages .= "- Macro is running from a temporary folder. Please extract all files from the archive before running.`n"
     }
-    
 
+    ; Check 2: Roblox Process
     Process, Exist, RobloxPlayerBeta.exe
     if (!ErrorLevel) {
         errorMessages .= "- Roblox process not found. Please open Roblox before using the macro.`n"
     }
-    
 
+    ; Check 3: AHK version compatibility
     if (SubStr(A_AhkVersion, 1, 1) = "2") {
         errorMessages .= "- This script requires AutoHotkey v1.1, but you are running v2. Please install AHK v1.1.`n"
-        criticalErrors := true
     } else if (A_AhkVersion < "1.1.33") {
         errorMessages .= "- Outdated AHK v1 version (" . A_AhkVersion . ") detected. Please update to the latest v1.1 release.`n"
     }
-    
 
-    if (A_ScreenDPI != 96 && A_ScreenDPI != 144) { ; 100% or 125%
-        errorMessages .= "- Uncommon DPI scaling detected (" . A_ScreenDPI . " DPI). Please set display scaling to 100% or 125% or 150% in Windows settings.`n"
+    ; Check 5: DPI Scaling Check
+    if (A_ScreenDPI != 96 && A_ScreenDPI != 120) { ; 100% or 125%
+        errorMessages .= "- Uncommon DPI scaling detected (" . A_ScreenDPI . " DPI). Please set display scaling to 100% or 125% in Windows settings.`n"
     }
-    
 
+
+    ; Check 7: Screen Resolution
     is16x9 := (A_ScreenWidth * 9 = A_ScreenHeight * 16)
     if (!is16x9) {
         errorMessages .= "- Unsupported screen resolution (" . A_ScreenWidth . "x" . A_ScreenHeight . "). A 16:9 aspect ratio is required (e.g., 1920x1080, 2560x1440).`n"
@@ -1064,744 +1028,23 @@ RunDiagnostics:
     
     SplashTextOff
     
-
+    ; Keyboard Layout Check from diagnostic tool
     hkl := DllCall("GetKeyboardLayout", "UInt", 0)
     layoutID := hkl & 0xFFFF
     layoutHex := Format("{:04X}", layoutID)
     if (layoutHex != "0409") { ; Not English (United States)
-        MsgBox, 4, Keyboard Layout Warning, Current keyboard layout is not English (US) (ID: 0x%layoutHex%). This can sometimes cause unexpected behavior.`n`nIt is recommended to switch to an 'English (United States)' layout.`n`nClick YES to continue anyway, or NO to exit.
-        IfMsgBox No
-            ExitApp
+        MsgBox, 64, Keyboard Layout Warning, Current keyboard layout is not English (US) (ID: 0x%layoutHex%). This can sometimes cause unexpected behavior.`n`nIt is recommended to switch to an 'English (United States)' layout.`n`nPress OK to continue.
     }
-    
+
     if (errorMessages != "") {
-        if (criticalErrors) {
-            ; Critical errors that really shouldn't be skipped
-            MsgBox, 16, Critical Issues Found, The following critical issues were found:`n`n%errorMessages%`n`nThese issues will likely cause the macro to fail completely.
-            ExitApp
-        } else {
-            ; Non-critical warnings that can be skipped
-            MsgBox, 4, Diagnostic Warnings, The following issues were found:`n`n%errorMessages%`n`nThese may cause the macro to not work properly.`n`nClick YES to continue anyway, or NO to exit.
-            IfMsgBox No
-                ExitApp
-        }
-    }
-
-Return
-ShowGui:
-    Gui, Destroy
-    Gui, -MinimizeBox -Caption
-    Gui, Color, 0x202020  ; Needed for transparency to work properly
-    WinSet, TransColor, 0x202020  ; Make black fully transparent
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx window background .PNG"
-    
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "background minimize button.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "background close button.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "background settings rbx macro Tabsfixed.PNG" 
-
-    Gui, Add, Text, x496 y0 w24 h24 BackgroundTrans gCloseApp
-    Gui, Add, Text, x0 y0 w24 h24 BackgroundTrans gMinimizeApp
-    Gui, Add, Text, x0 y0 w472 h15 BackgroundTrans gDragWindow
-
-
-
-
-
-
-
-    Gui, Font, s9 cWhite, Segoe UI
-    Gui, Add, Tab , x0 y24 w540 h24 vMyTab,`n    Seeds    |    Gears    |    Eggs    |   Cosmetics   |    Summer    |     Settings     |   Credits`n    |
-    guicontrol, choose, mytab, 6
-
-    Gui, Tab, 1
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx background Seed tab.PNG"
-    IniRead, SelectAllSeeds, %settingsFile%, Seed, SelectAllSeeds, 0
-    Gui, Add, CheckBox, % "x391 y135 w12 h12 vSelectAllSeeds gHandleSelectAll -Theme Background3C3C3C " . (SelectAllSeeds ? "Checked" : "")
-    
-
-	Loop, % seedItems.Length() {
-        IniRead, sVal, %settingsFile%, Seed, Item%A_Index%, 0
-        if (A_Index > 14) {
-            col := 369
-            idx := A_Index - 15
-            yBase := 183
-        }
-        else if (A_Index > 7) {
-            col := 198
-            idx := A_Index - 8
-            yBase := 183
-
-        }
-        else {
-            col := 23
-            idx := A_Index
-            yBase := 143
-        }
-        y := yBase + (idx * 30)
-        Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vSeedItem" A_Index " gHandleSelectAll cD3D3D3 " . (sVal ? "Checked" : ""), 
-
-    }
-
-    Gui, Tab, 2
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx background Gears tab.PNG"
-
-    IniRead, SelectAllGears, %settingsFile%, Gear, SelectAllGears, 0
-    Gui, Add, Checkbox, % "x391 y135 w12 h12 vSelectAllGears gHandleSelectAll c87CEEB " . (SelectAllGears ? "Checked" : ""), Select All Gears 
-
-
-    Loop, % gearItems.Length() {
-        IniRead, gVal, %settingsFile%, Gear, Item%A_Index%, 0
-        if (A_Index > 9) {
-            col := 373
-            idx := A_Index - 10
-            yBase := 192
-        }
-        else if (A_Index > 4) {
-            col := 200
-            idx := A_Index - 5
-            yBase := 192
-        
-        }
-        else {
-            col := 28
-            idx := A_Index
-            yBase := 160
-        }
-        y := yBase + (idx * 31)
-        Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vGearItem" A_Index " gHandleSelectAll cD3D3D3 " . (gVal ? "Checked" : ""), 
-
-    }
-    Gui, Tab, 3
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx background egg tab.PNG"
-    IniRead, SelectAllEggs, %settingsFile%, Egg, SelectAllEggs, 0
-    Gui, Add, CheckBox, % "x391 y135 w12 h12 vSelectAllEggs gHandleSelectAll -Theme BackgroundTrans ce87b07 " . (SelectAllEggs ? "Checked" : "")
-
-    Loop, % eggItems.Length() {
-        IniRead, eVal, %settingsFile%, Egg, Item%A_Index%, 0
-        if (A_Index > 5) {
-            col := 375
-            idx := A_Index - 6
-            yBase := 260
-        }
-        else if (A_Index > 3) {
-            col := 200
-            idx := A_Index - 4
-            yBase := 260
-        
-        }
-        else if (A_Index > 2) {
-            col := 23
-            idx := A_Index - 3
-            yBase := 370
-        
-        }
-        else if (A_Index > 1) {
-            col := 23
-            idx := A_Index - 2
-            yBase := 300
-        
-        }
-        else if (A_Index > 0) {
-            col := 23
-            idx := A_Index - 1
-            yBase := 235
-        
-        }        
-        
-        y := yBase + (idx * 112)
-        Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vEggItem" A_Index " gHandleSelectAll cD3D3D3 " . (eVal ? "Checked" : ""), % eggItems[A_Index]
-
-
-    }
-
-    Gui, Tab, 4
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx background CosmeticShop.PNG"
-
-    Gui, Add, Picture, x0 y0 w520 h425 vSubTabImage BackgroundTrans, % subTabSummerPath
-
-    ;   Gui, Add, Picture, x0 y0 w520 h425 vSubTabImage BackgroundTrans, % subTabSummerPath
-    ; Text "buttons" to switch tabs - must contain text to be clickable
-    Gui, Add, Text, x12  y80 w130 h40 gShowcosmeticSubTab BackgroundTrans,
-    Gui, Add, Text, x140 y80 w130 h40 gShowSeedSubTab  BackgroundTrans,
-    Gui, Add, Text, x282 y80 w130 h40 gShowBearSubTab  BackgroundTrans,
-    ;just saving stuff dont ask    color 32CD32                             background seedcaft subtab.PNG          background bearcraft subtab.PNG
-    ;Gui, Add, Text, x152 y80 w120 h40 gShowSeedSubTab  BackgroundTrans,seed  
-    ;Gui, Add, Text, x293 y80 w120 h40 gShowBearSubTab  BackgroundTrans,bear
-
-
-
-    IniRead, BuyAllCosmetics, %settingsFile%, Cosmetic, BuyAllCosmetics, 0
-    Gui, Add, CheckBox, % "x61 y118 w12 h12 vBuyAllCosmetics gHandleSelectAll -Theme BackgroundTrans cD41551 " . (BuyAllCosmetics ? "Checked" : "")
-    IniRead, AutoHoneySetting, %settingsFile%, AutoHoney, AutoHoneySetting, 0
-    Gui, Add, CheckBox, % "x379 y135 w12 h12 vAutoHoney gSaveAutoHoney BackgroundTrans c00FF00 " . (AutoHoneySetting ? "Checked" : ""), submite pollinated
-
-    ; ----- SeedCrafting Set -----
-    Loop, % seedCraftingItems.Length() {
-        IniRead, sVal, %settingsFile%, SeedCrafting, Item%A_Index%, 0
-        if (A_Index > 2) {
-            col := 374, idx := A_Index - 3, yBase := 213
-        } else if (A_Index > 1) {
-            col := 199, idx := A_Index - 2, yBase := 213
-        } else {
-            col := 25, idx := A_Index, yBase := 143
-        }
-        y := yBase + (idx * 70)
-        Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vSeedCraftingItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (sVal ? "Checked" : ""), % seedCraftingItems[A_Index]
-    }
-
-    ; === Seed Craft Lock ===
-    IniRead, ManualSeedCraftLock, %settingsFile%, Main, ManualSeedCraftLock, 0
-    Gui, Add, Edit, x369 y132 w36 h18 vManualSeedCraftLock gUpdateCraftLock -Theme cBlack, %ManualSeedCraftLock%
-
-    ; ----- BearCrafting Set -----
-    Loop, % bearCraftingItems.Length() {
-        IniRead, bVal, %settingsFile%, BearCrafting, Item%A_Index%, 0
-    if (A_Index > 8) {
-        col := 374, idx := A_Index - 9, yBase := 183  ; was 183
-    } else if (A_Index > 4) {
-        col := 199, idx := A_Index - 5, yBase := 183  ; was 183
-    } else {
-        col := 25, idx := A_Index, yBase := 133
-    }
-        y := yBase + (idx * 50)
-        Gui, Add, Checkbox, % "x" col " y" y " w12 h12 vBearCraftingItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (bVal ? "Checked" : ""), % bearCraftingItems[A_Index]
-    }
-    ; === Bear Craft Lock ===
-    IniRead, ManualBearCraftLock, %settingsFile%, Main, ManualBearCraftLock, 0
-    Gui, Add, Edit, x369 y132 w36 h18 vManualBearCraftLock gUpdateCraftLock -Theme cBlack, %ManualBearCraftLock%
-    
-        HideAllCheckboxSets()
-Gosub, ShowcosmeticSubTab
-
-    Gui, Tab, 5
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "background harvest tab.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "background summer shop.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans vPicSummerShop, % subTabSummerSelectPath
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans vPicHarvestTab, % subTabSummerRecordPath
-
-; Initially show summer shop background, hide harvest tab
-GuiControl, Show, PicSummerShop
-GuiControl, Hide, PicHarvestTab
-
-   
-    Gui, Add, Text, x12  y80 w130 h40 gShowSummerSelectSubTab BackgroundTrans,
-    Gui, Add, Text, x140 y80 w130 h40 gShowSummerRecordSubTab BackgroundTrans,
-
-    ; Select All checkbox
-    IniRead, SelectAllSummer, %settingsFile%, Summer, SelectAll, 0
-    Gui, Add, CheckBox, % "x391 y135 w12 h12 vSelectAllSummer gHandleSelectAll BackgroundTrans cFFD700 " . (SelectAllSummer ? "Checked" : "")
-
-    ; Summer item checkboxes
-    Gui, Font, s9 cWhite Bold, Segoe UI
-    Loop, % summerItems.Length() {
-        IniRead, hVal, %settingsFile%, Summer, Item%A_Index%, 0
-        if (A_Index > 6) {
-            col := 375, idx := A_Index - 7, yBase := 193
-        } else if (A_Index > 3) {
-            col := 200, idx := A_Index - 4, yBase := 193
-        } else {
-            col := 20, idx := A_Index, yBase := 143
-        }
-        y := yBase + (idx * 50)
-        Gui, Add, Checkbox, % "x" col " y" y " w13 h13 vSummerItem" A_Index " gHandleSelectAll cWhite BackgroundTrans " . (hVal ? "Checked" : ""), % SummerItems[A_Index]
-    }
-
-    ; Buttons
-    Gui, Add, Button, x202 y185 w120 h40 gToggleRecording vSummerRecord Background202020, Record New Path `n(F1)
-    Gui, Add, Button, x202 y350 w120 h40 gDemoInput vSummerTest Background202020, Test Path `n(F2)
-    Gui, Add, Button, x375 y350 w120 h40 gLoadInputs vSummerLoad Background202020, Load Saved Path `n(F3)
-    Gui, Add, Button, x25 y350 w120 h40 gF4 vSummerF4 Background202020, Test Auto-Harvest `n(F4)
-
-    ; Auto-collect checkbox
-    IniRead, autoSummerHarvest, %settingsFile%, Main, SummerHarvest, 0
-    Gui, Add, Checkbox, x20 y137 w13 h13 vautoSummerHarvest cFF7518, Auto-Collect & Submit Summer Harvest
-    Gui, Font, s9 cWhite Bold, Segoe UI
-    Gui, Add, Text, x35 y137 BackgroundTrans vautosummerharvestext cFF7518 , Auto Harvest and submit
-
-
-
-
-    ; Number of Cycle
-    Gui, Font, s9 cWhite Bold, Segoe UI
-    Gui, Add, Text, x195 y137 BackgroundTrans cFF7518 vnumberOfCycleLabel, Number of Cycle
-
-    IniRead, savedNumberOfCycle, %settingsFile%, Main, NumberOfCycle
-    if (savedNumberOfCycle = "ERROR" || savedNumberOfCycle = "")
-        savedNumberOfCycle := 3
-
-    Gui, Font, s8 c000000 Bold, Segoe UI
-    Gui, Add, Edit, x290 y135 w25 h18 vnumberOfCycle +BackgroundFFFFFF, %savedNumberOfCycle%
-
-    Gui, Font, s8 cD3D3D3 Bold, Segoe UI
-    Gui, Add, Button, x460 y137 w35 h18 gUpdateNumberOfCycle vsaveCycle Background202020, Save
-
-    ; Collect method
-    Gui, Font, s9 cWhite Bold, Segoe UI
-    Gui, Add, Text, x328 y137 BackgroundTrans cFF7518 vcollectMethodLabel, Collect Method
-
-    Gui, Font, s8 cBlack, Segoe UI
-    IniRead, savedHarvestSpeed, %settingsFile%, Main, HarvestSpeed, Stable
-    Gui, Add, DropDownList, vsavedHarvestSpeed gUpdateHarvestSpeed x415 y134 w35, Stable|Fast
-    GuiControl, ChooseString, savedHarvestSpeed, %savedHarvestSpeed%
-    Gui, Font, s8 cBlack, Segoe UI
-    Gui, Add, Text, x25 y190 w120 BackgroundTrans cwhite vexplanationtext,
-    ( 
-Press F1 and wait the alignment to finish.
-
-After the alignment finishes,
-proceed to use only the keyboard  to navigate to your target plant to harvest.
-)
-    Gui, Add, Text, x200 y240 w120 BackgroundTrans cwhite vexplanationtext1,
-( 
-Once you finished to navigate to your target plant, Press F1 again to stop recording the path.
-     )
-     Gui, Add, Text, x375 y190 w120 BackgroundTrans cwhite vexplanationtext2,
-( 
-Press F2 to see if your path is correctly recorded. 
-
-Once it's all done, you can now start the macro and the Summer Harvest is now automated.
-
-     )
-     Gui, Add, Text, x395 y392 w120 BackgroundTrans cwhite vexplanationtext3,
-     (
-       CREDIT-nasayuzaki- 
-     )
- HideAllSummerControls()
- Gosub, ShowSummerSelectSubTab
-
-
-    Gui, Tab, 6
-    
-    ; Invisible hotspots (replacing buttons)
-    Gui, Add, Text, x390 y86  w100 h16 gDisplayWebhookValidity BackgroundTrans 0x4
-    Gui, Add, Text, x390 y111 w100 h16 gUpdateUserID          BackgroundTrans 0x4
-    Gui, Add, Text, x390 y135 w100 h16 gDisplayServerValidity BackgroundTrans 0x4
-    Gui, Add, Text, x217 y164 w85  h18 gClearSaves            BackgroundTrans 0x4
-    Gui, Add, Text, x15  y370 w105 h40 gStartScanMultiInstance BackgroundTrans 0x4
-    Gui, Add, Text, x405 y370 w105 h40 gQuit                  BackgroundTrans 0x4
-    Gui, Add, Text, x240 y385 w40  h25 gGui2                  BackgroundTrans 0x4
-    Gui, Add, Text, x414 y251 w84  h20 gGui4                  BackgroundTrans 0x4
-    Gui, Add, Text, x414 y218 w84  h20 gGui5                  BackgroundTrans 0x4
-
-    
-  
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab backgroundfixed.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "background settings rbx button help.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "background settings rbx button start.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "background settings rbx button stop.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab Save Webhook button.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab clear save button.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab Save PS Link button.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab Save User ID button.PNG"
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab Eggs button1.PNG"
-    Gui, Add, Picture, x0 y-3 w520 h425 BackgroundTrans, % mainDir "rbx macro setting  tab Pets button.PNG" 
-
-
-    ; opt1 := (selectedResolution = 1 ? "Checked" : "")
-    ; opt2 := (selectedResolution = 2 ? "Checked" : "")
-    ; opt3 := (selectedResolution = 3 ? "Checked" : "")
-    ; opt4 := (selectedResolution = 4 ? "Checked" : "")
-    
-    ;Gui, Add, GroupBox, x30 y200 w260 h110, Resolution
-    ; Gui, Add, Text, x35 y220, Resolutions:
-    ; IniRead, selectedResolution, %settingsFile%, Main, Resolution, 1
-    ; Gui, Add, Radio, x35 y240 vselectedResolution gUpdateResolution c708090 %opt1%, 2560x1440 125`%
-    ; Gui, Add, Radio, x35 y260 gUpdateResolution c708090 %opt2%, 2560x1440 100`%
-    ; Gui, Add, Radio, x35 y280 gUpdateResolution c708090 %opt3%, 1920x1080 100`%
-    ; Gui, Add, Radio, x35 y300 gUpdateResolution c708090 %opt4%, 1280x720 100`%
-
-
-        IniRead, PingSelected, %settingsFile%, Main, PingSelected, 0
-    pingColor := PingSelected ? "c90EE90" : "cD3D3D3"
-    Gui, Add, Checkbox, % "x140 y246 w12 h12 vPingSelected gUpdateSettingColor " . pingColor . (PingSelected ? " Checked" : ""), Discord Item Pings
-    
-    IniRead, AutoAlign, %settingsFile%, Main, AutoAlign, 0
-    autoColor := AutoAlign ? "c90EE90" : "cD3D3D3"
-    Gui, Add, Checkbox, % "x105 y272 w12 h12 vAutoAlign gUpdateSettingColor " . autoColor . (AutoAlign ? " Checked" : ""), Auto-Align
-
-
-    IniRead, MultiInstanceMode, %settingsFile%, Main, MultiInstanceMode, 0
-    multiInstanceColor := MultiInstanceMode ? "c90EE90" : "cD3D3D3"
-    Gui, Add, Checkbox, % "x160 y299 w12 h12 vMultiInstanceMode gUpdateSettingColor " . multiInstanceColor . (MultiInstanceMode ? " Checked" : ""), Multi-Instance Mode
-
-    Gui, Font, s8 cBlack, Segoe UI
-    IniRead, savedWebhook, %settingsFile%, Main, UserWebhook
-    if (savedWebhook = "ERROR") {
-        savedWebhook := ""
-    }
-    Gui, Add, Edit, x125 y87 w255 h15 vwebhookURL hwndhWebhookURL +E0x200 +E0x800 -Theme cBlack, %savedWebhook%
-
-
-    ;WinSet, Transparent, 1, ahk_id %hWebhookURL%
-
-
-    IniRead, savedUserID, %settingsFile%, Main, DiscordUserID
-    if (savedUserID = "ERROR") {
-        savedUserID := ""
-    }
-    
-    Gui, Add, Edit, x135 y111 w245 h15 vdiscordUserID +E0x200 +E0x800 -Theme cBlack Background2C2F33, %savedUserID%
-
-
-    IniRead, savedUserID, %settingsFile%, Main, DiscordUserID
-
-
-    IniRead, savedServerLink, %settingsFile%, Main, PrivateServerLink
-    if (savedServerLink = "ERROR") {
-        savedServerLink := ""
-    }
-    Gui, Add, Edit, x125 y136 w255 h15 vprivateServerLink -Theme cBlack BackgroundFFFFFF, %savedServerLink%
-
-    
-    IniRead, SavedKeybind, %settingsFile%, Main, UINavigationKeybind, \
-    if (SavedKeybind = "") {
-        SavedKeybind := "\"
-    }
-    Gui, Add, Edit, x169 y220 w20 h16 vSavedKeybind gUpdateKeybind -Theme +E0x200 +E0x800 cBlack Background2E2E2E, %savedKeybind%
-
-
-    Gui, Font, s8 cD3D3D3 Bold, Segoe UI
-    
-    Gui, Font, s8 cBlack, Segoe UI
-    IniRead, SavedSpeed, %settingsFile%, Main, MacroSpeed, Stable
-    Gui, Add, DropDownList, vSavedSpeed gUpdateSpeed x115 y191 w50 , Stable|Fast|Ultra|Max
-    GuiControl, ChooseString, SavedSpeed, %SavedSpeed%
-    
-
-
-
-
-    Gui, Tab, 7
-    Gui, Add, Picture, x0 y0 w520 h425 BackgroundTrans, % mainDir "rbx macro background credit.png"
-    Gui, Font, cBlue underline
-    Gui, Add, Text, x355 y345 w150 BackgroundTrans gOpenLink, GAG MODED MACROS DISCORD `njoin for update and bugreport
-
-    Gui, Font, norm
-
-    Gui, Show, w520 h425, GAG MACRO Yark Spade Crafting update +xTazerTx's GIGA UI Rework
-
-   
-
-Return
-
-OpenLink:
-    Run, https://discord.gg/gagmacros 
-return
-
-; --- SUMMER NASA STUFF ---
-    Gui, Font, s8 cD3D3D3 Bold, Segoe UI
-    Gui, Add, Text, x50 y190, Macro Speed:
-    Gui, Font, s8 cBlack, Segoe UI
-    IniRead, SavedSpeed, %settingsFile%, Main, MacroSpeed, Stable
-    Gui, Add, DropDownList, vSavedSpeed gUpdateSpeed x130 y190 w50, Stable|Fast|Ultra|Max
-    GuiControl, ChooseString, SavedSpeed, %SavedSpeed%
-
-    Gui, Font, s10 cWhite Bold, Segoe UI
-    Gui, Add, Button, x50 y335 w150 h40 gStartScanMultiInstance Background202020, Start Macro (F5)
-    Gui, Add, Button, x320 y335 w150 h40 gQuit Background202020, Stop Macro (F7)
-
-    Gui, Tab, 8
-    Gui, Font, s9 cWhite Bold, Segoe UI
-    Gui, Add, GroupBox, x23 y50 w475 h340 cfad15f, Summer Harvest
-    Gui, Add, Button, x40 y80 w120 h40 gToggleRecording Background202020, Record New Path `n(F1)
-    Gui, Add, Button, x200 y80 w120 h40 gDemoInput Background202020, Test Path `n(F2)
-    Gui, Add, Button, x360 y80 w120 h40 gLoadInputs Background202020, Load Saved Path `n(F3)
-    Gui, Add, Button, x200 y415 w120 h40 gF4 Background202020, Test Auto-Harvest `n(F4)
-    IniRead, autoSummerHarvest, %settingsFile%, Main, SummerHarvest, 0
-    Gui, Add, Checkbox, % "x40 y150 vautoSummerHarvest cfad15f " . (autoSummerHarvest ? "Checked" : ""), Auto-Collect & Submit Summer Harvest
-
-    Gui, Font, s9 cWhite Bold, Segoe UI
-    Gui, Add, Text, x280 y150 cfad15f, |   Number of Cycle
-    IniRead, savedNumberOfCycle, %settingsFile%, Main, NumberOfCycle
-    if (savedNumberOfCycle = "ERROR" || savedNumberOfCycle = "")
-        savedNumberOfCycle := 3
-    Gui, Font, s8 c000000 Bold, Segoe UI
-    Gui, Add, Edit, x400 y150 w25 h18 vnumberOfCycle +BackgroundFFFFFF, %savedNumberOfCycle%
-    Gui, Font, s8 cD3D3D3 Bold, Segoe UI
-    Gui, Add, Button, x430 y150 w35 h18 gUpdateNumberOfCycle Background202020, Save
-    IniRead, savedNumberOfCycle, %settingsFile%, Main, NumberOfCycle
-
-    Gui, Font, s9 cWhite Bold, Segoe UI
-    Gui, Add, Text, x280 y170 cfad15f, |   Collect Method
-    Gui, Font, s8 cBlack, Segoe UI
-    IniRead, savedHarvestSpeed, %settingsFile%, Main, HarvestSpeed, Stable
-    Gui, Add, DropDownList, vsavedHarvestSpeed gUpdateHarvestSpeed x400 y170 w66, Stable|Fast
-    GuiControl, ChooseString, savedHarvestSpeed, %savedHarvestSpeed%
-
-
-    Gui, Font, s14 cD3D3D3 Bold, Segoe UI
-    Gui, Add, Text, x40 y170, How to Use:
-    Gui, Font, s8 cD3D3D3 Bold, Segoe UI
-    Gui, Add, Text, x50 y200, Step 1: Press F1 and wait the alignment to finish.
-    Gui, Add, Text, x50 y217, Step 2: After the alignment finishes, proceed to use only the keyboard `n to navigate to your target plant to harvest.
-    Gui, Add, Text, x50 y247, Step 3: Once you finished to navigate to your target plant, Press F1 `n again to stop recording the path. 
-    Gui, Add, Text, x50 y277, Step 4: Press F2 to see if your path is correctly recorded. 
-    Gui, Add, Text, x50 y295, Step 5: Once it's all done, you can now start the macro and the Summer Harvest is `n now automated.
-    Gui, Font, s15 cD3D3D3 Bold, Segoe Script
-    Gui, Add, Picture, x227 y320 w69 h69, % mainDir "Images\\Nasa.png"
-    Gui, Add, Text, x200 y380, NasaYuzaki
-    Gui, Show, w520 h460, NasaYuzaki's Modded Macro [SUMMER UPDATE]
-
-
-    MinimizeApp:
-    Gui, Minimize
-    return
-
-    CloseApp:
+        MsgBox, 16, Diagnostic Failed, The following issues were found:`n`n%errorMessages%
         ExitApp
-    return
-
-    DragWindow:
-        PostMessage, 0xA1, 2  ; WM_NCLBUTTONDOWN, HTCAPTION
-    return
-
-
-    
-; ----- Tab Switch Labels -----
-
-ShowcosmeticSubTab:
-    HideAllCheckboxSets()
-    GuiControl,, SubTabImage, % subTabSummerPath
-    GuiControl, Show, AutoHoney
-    GuiControl, Show, BuyAllCosmetics
-    Loop, % BuyAllCosmetics.Length() {
-        GuiControl, Show, % "BuyAllCosmetics" A_Index
     }
-return
-
-
-
-ShowSeedSubTab:
-    HideAllCheckboxSets()
-    GuiControl,, SubTabImage, % subTabSeedPath
-    Loop, % seedCraftingItems.Length() {
-        GuiControl, Show, % "SeedCraftingItem" A_Index  
-        GuiControl, Show, SeedCraftLockLabel
-        GuiControl, Show, ManualSeedCraftLock
-
-    }
-return
-
-
-
-
-ShowBearSubTab:
-    HideAllCheckboxSets()
-    GuiControl,, SubTabImage, % subTabBearPath
-    Loop, % bearCraftingItems.Length() {
-        GuiControl, Show, % "BearCraftingItem" A_Index
-        GuiControl, Show, BearCraftLockLabel
-        GuiControl, Show, ManualBearCraftLock
-
-    }
-return
-ShowSummerSelectSubTab:
-    HideAllSummerControls()
-    GuiControl, Show, PicSummerShop
-    GuiControl, Hide, PicHarvestTab
-
-    GuiControl, Show, SelectAllSummer
-    Loop, % summerItems.Length() {
-        GuiControl, Show, SummerItem%A_Index%
-        
-    }
-return
-
-
-
-ShowSummerRecordSubTab:
-    HideAllSummerControls()
-    GuiControl, Show, PicHarvestTab
-    GuiControl, Hide, PicSummerShop
-
-    ; Show record tab controls ONLY
-    GuiControl, Show, SummerRecord
-    GuiControl, Show, SummerTest
-    GuiControl, Show, SummerLoad
-    GuiControl, Show, SummerF4
-    GuiControl, Show, autoSummerHarvest
-    GuiControl, Show, numberOfCycleLabel
-    GuiControl, Show, numberOfCycle
-    GuiControl, Show, saveCycle
-    GuiControl, Show, collectMethodLabel
-    GuiControl, Show, savedHarvestSpeed
-    GuiControl, Show, autosummerharvestext
-    GuiControl, Show, explanationtext
-    GuiControl, Show, explanationtext1
-    GuiControl, Show, explanationtext2
-    GuiControl, Show, explanationtext3
-
-return
-
-
-
-
-
-
-
-
-
-
-
-return
-
-Gui2:
-	Gui, 2:Show, x200 y200 w520 h425
-		Gui, 2:+Resize +MinimizeBox +SysMenu
-		Gui, 2:Margin, 10, 10
-		Gui, 2:Color, 0x202020
-		Gui, 2:Font, s9 cWhite, Segoe UI
-		Gui, 2:Add, Tab, x10 y10 w495 h400 , Help Window|How to set up|Common issues|Manual Alignment|multi instance
-	
-	Gui, 2: Tab, 1
-	Gui, 2: Font, s9 cWhite norm, Segoe UI
-	Gui, 2: Add, GroupBox, x20 y50 w475 h350 cD3D3D3,
-	Gui, 2: Add, Text, x35 y75 w450 h300,
-(
-Welcomed  to the help tab
-
-This window is  intended for helpping trouble shoot and setting up the macro without the help of anyone please check the other tabs
-
-
-
-First and foremost if its your fist time using the macro and  downloading ahk 1.1 please restart your computer because ahk did not boot properlly
-
-Also extract the  entire file and dont have them spread around it will lead to the macro failing to run properly
-
-
-
-Newest known bug and fix:
-The shovel bugg where your navigation key start on the toolbar and the fix for that is just rejoining till you dont have it
-
-)
-	
-		Gui, 2: Tab, 2
-		Gui, 2: Font, s9 cWhite norm, Segoe UI
-		Gui, 2: Add, GroupBox, x23 y50 w475 h350 cD3D3D3,
-		
-		Gui, 2: Add, Text, x35 y75 w450 h300,
-
-		(
-This is what you should do to run the macro
-
-
-In roblox setting disable shiftlock, put the camera mode in default and enable ui navigation
-
-Turn on auto-align
-
-Disable fastmode
-
-Input your navigation key and forward movement key in the macro settings
-Place the recall wrench is you 2nd toolbar slot and fill the rest of the slot with anything else
-
-Do not start the macro with ui navigation on
-
-
-
-And start the macro with f5 and stop it with f7 (fn+f5 and fn+f7 for small keyboard)
-Also you can force shutdown the macro with Rshift.
-)
-		Gui, 2: Tab, 3
-		Gui, 2: Font, s9 cWhite norm, Segoe UI
-		Gui, 2:Add, GroupBox, x23 y50 w475 h350 cD3D3D3,
-		
-		Gui, 2:Add, Text, x35 y75 w450 h300,
-(
-The macro isnt clicking where it should  to open the shops? 
-
-Make sure to run the macro in 1920x1080 100 or 2560x1440 150 or any 16:9 resolution
-Also disable hdr or any  colour altering display settings 
-
-Rhe macro is missing the eggs ?
-
-Remove or pet grey mouse or any movement speed pets
-
-
-)
-		Gui, 2: Tab, 4
-		Gui, 2: Font, s9 cWhite norm, Segoe UI
-		Gui, 2: Add, GroupBox, x23 y50 w475 h350 cD6D6D6, !!! do not do this if you use auto-align!!!
-		
-		Gui, 2:Add, Text, x35 y69 w450 h300,
-(
-You must be in that exact camera position for manual alignment to work and same for the zoom level.
-
-Failling to align correctly will lead to drifting wich will break some of the shops
-)
-Gui, 2:Add, Picture, x35 y145 w450 h250, % mainDir "camalign.png"
-
-		Gui, 2: Tab, 5
-		Gui, 2: Font, s9 cWhite norm, Segoe UI
-		Gui, 2: Add, GroupBox, x23 y50 w475 h350 cD6D6D6, 
-		
-		Gui, 2:Add, Text, x35 y69 w450 h300,
-		(
-Using multy instance mode is very simple just get yourself multiple roblox window and the macro will do all the works itself.
-
-
-this can be donr by using bloxstarp or any other means of generating orther roblox instance.
-
-
-but be carefull depending on wich client you use you might get banned from roblox beacause of the recent modified client ban that roblox implemented.
-)
-Return
-
-Gui3:
-    Gui, 3:Show, x169 y40 w440 h969 
-    Gui, 3:+Resize +MinimizeBox +SysMenu 
-    Gui, 3:Margin, 10, 10
-    Gui, 3:Color, c244f29
-    Gui, 3:Add, Text, x100 y98 BackgroundTrans,...........................................................
-    Gui, 3:Add, Picture, x-21 y-10 w478 h1001, % mainDir "beequest.png"
-    
-    
-
-    Gui, 3:Add, Checkbox, cYellow x340 y3 gSwitch, Always on top
-Return
-Switch:
-	if(Always:=!Always)
-		Gui,+AlwaysOnTop
-	else
-		Gui,-AlwaysOnTop
-	return
-Gui4:
-    Gui, 4:Show, x169 y20 w574 h938
-    Gui, 4:+Resize +MinimizeBox +SysMenu 
-    Gui, 4:Margin, 10, 10
-    Gui, 4:Color, c244f29
-    Gui, 4:Add, Picture, x-25 y-9 w619 h969, % mainDir "eggs.png"
-
-    Gui, 4:Add, Checkbox, cYellow x480 y3 gSwitch1, Always on top
-Return
-Switch1:
-	if(Always:=!Always)
-		Gui,-AlwaysOnTop
-	else
-		Gui,+AlwaysOnTop
-	return
-
-
-Gui5:
-    Gui, 5:Show, x169 y0 w626 h1000
-    Gui, 5:+Resize +MinimizeBox +SysMenu 
-    Gui, 5:Margin, 10, 10
-    Gui, 5:Color, c244f29
-    Gui, 5:Add, Picture, x-7 y13 w724 h986, % mainDir "pets.png"
-
-    Gui, 5:Add, Checkbox, cYellow x530 y3 gSwitch2, Always on top
-Return
-Switch2:
-	if(Always:=!Always)
-		Gui,+AlwaysOnTop
-	else
-		Gui,-AlwaysOnTop
-	return
-
-
-
 
 
 Return
+
+#Include %A_ScriptDir%\GUI\GUI.ahk
 
 ; ui handlers
 
@@ -1824,19 +1067,6 @@ UpdateUserID:
 
 Return
 
-UpdateNumberOfCycle:
-
-    Gui, Submit, NoHide
-
-    if (numberOfCycle != "") {
-        IniWrite, %numberOfCycle%, %settingsFile%, Main, NumberOfCycle
-        MsgBox, 0, Message, Number Of Cycle Saved!
-    }else{
-        MsgBox, 48, Warning, Number Of Cycle is empty or invalid.
-    }
-
-Return
-
 DisplayServerValidity:
 
     Gui, Submit, NoHide
@@ -1847,19 +1077,19 @@ Return
 
 ClearSaves:
 
-    IniWrite, %A_Space%, %settingsFile%, Main, UserWebhook
-    IniWrite, %A_Space%, %settingsFile%, Main, DiscordUserID
-    IniWrite, %A_Space%, %settingsFile%, Main, PrivateServerLink
+    MsgBox, 4, Confirm Reset, Are you sure you want to delete all saved settings?
+    IfMsgBox, No
+        Return
 
-    IniRead, savedWebhook, %settingsFile%, Main, UserWebhook
-    IniRead, savedUserID, %settingsFile%, Main, DiscordUserID
-    IniRead, savedServerLink, %settingsFile%, Main, PrivateServerLink
+    settingsFile := A_ScriptDir . "\Settings\settings.ini"
 
-    GuiControl,, webhookURL, %savedWebhook% 
-    GuiControl,, discordUserID, %savedUserID% 
-    GuiControl,, privateServerLink, %savedServerLink% 
-
-    MsgBox, 0, Message, Webhook, User Id, and Private Server Link Cleared
+    if FileExist(settingsFile) {
+        FileDelete, %settingsFile%
+        MsgBox, 64, Settings Deleted, settings.ini has been successfully deleted.
+        ExitApp
+    } else {
+        MsgBox, 48, Not Found, settings file not found.
+    }
 
 Return
 
@@ -1884,8 +1114,10 @@ UpdateCraftLock:
     Gui, Submit, NoHide
     ManualSeedCraftLock := ManualSeedCraftLock * 60000
     ManualBearCraftLock := ManualBearCraftLock * 60000
+    ManualDinosaurCraftLock := ManualDinosaurCraftLock * 60000
     IniWrite, %ManualSeedCraftLock%, %settingsFile%, Main, ManualSeedCraftLock
     IniWrite, %ManualBearCraftLock%, %settingsFile%, Main, ManualBearCraftLock
+    IniWrite, %ManualDinosaurCraftLock%, %settingsFile%, Main, ManualDinosaurCraftLock
     Return
     
 UpdateSpeed:
@@ -1909,20 +1141,6 @@ UpdateSpeed:
 
 Return
 
-UpdateHarvestSpeed:
-
-    Gui, Submit, NoHide
-
-    IniWrite, %savedHarvestSpeed%, %settingsFile%, Main, MacroSpeed
-    GuiControl, ChooseString, savedHarvestSpeed, %savedHarvestSpeed%
-    if (savedHarvestSpeed = "Fast") {
-        MsgBox, 0, Disclaimer, % "Harvest speed set to " . savedHarvestSpeed . ". Use it if you have clean garden ( Fast but Unstable [ Might Break ] )."
-    }
-    else {
-        MsgBox, 0, Message, % "Harvest speed set to " . savedHarvestSpeed . ". Recommended for stable collecting ( Messy Garden )."
-    }
-
-Return
 
 UpdateResolution:
 
@@ -1970,12 +1188,13 @@ HandleSelectAll:
             GuiControl,, GearItem%A_Index%, % SelectAllGears
             Gosub, SaveSettings
     }
+    /*
     else if (A_GuiControl = "SelectAllSummer") {
         Loop, % summerItems.Length()
             GuiControl,, SummerItem%A_Index%, % SelectAllSummer
             Gosub, SaveSettings
     }
-
+*/
 return
 
 UpdateSettingColor:
@@ -1986,6 +1205,7 @@ UpdateSettingColor:
     autoColor := "+c" . (AutoAlign ? "90EE90" : "D3D3D3")
     pingColor := "+c" . (PingSelected ? "90EE90" : "D3D3D3")
     multiInstanceColor := "+c" . (MultiInstanceMode ? "90EE90" : "D3D3D3")
+    uiNavigationFixColor := "+c" . (UINavigationFix ? "90EE90" : "D3D3D3")
 
     ; apply colors
     GuiControl, %autoColor%, AutoAlign
@@ -1996,6 +1216,9 @@ UpdateSettingColor:
 
     GuiControl, %multiInstanceColor%, MultiInstanceMode
     GuiControl, +Redraw, MultiInstanceMode
+
+    GuiControl, %uiNavigationFixColor%, UINavigationFix
+    GuiControl, +Redraw, UINavigationFix
     
 return
 
@@ -2062,14 +1285,14 @@ UpdateSelectedItems:
         if (eggItem%A_Index%)
             selectedEggItems.Push(eggItems[A_Index])
     }
-
+/*
     selectedSummerItems := []
 
     Loop, % summerItems.Length() {
         if (SummerItem%A_Index%)
             selectedSummerItems.Push(summerItems[A_Index])
     }
-
+*/
     selectedSeedCraftingItems := []
 
     Loop, % seedCraftingItems.Length() {
@@ -2082,6 +1305,13 @@ UpdateSelectedItems:
     Loop, % bearCraftingItems.Length() {
         if (BearCraftingItem%A_Index%)
             selectedBearCraftingItems.Push(BearCraftingItems[A_Index])
+    }
+
+    selectedDinosaurCraftingItems := []
+
+    Loop, % dinosaurCraftingItems.Length() {
+        if (DinosaurCraftingItem%A_Index%)
+            selectedDinosaurCraftingItems.Push(DinosaurCraftingItems[A_Index])
     }
 
 Return
@@ -2144,11 +1374,11 @@ StartScanMultiInstance:
     global lastEggShopMinute := -1
     global lastCosmeticShopHour := -1
     global lastAutoHoneyMinute := -1
-    global lastSummerShopMinute := -1
-    global lastSummerRetryMinute := -1
     global lastSeedCraftMinute := -1
     global lastBearCraftMinute := -1
-    global lastSummerHarvestMinute := -1
+    global lastDinosaurCraftMinute := -1
+    global lastAutoSubmitHour := -1
+    global cycleValidated := false
 
     started := 1
     cycleFinished := 1
@@ -2255,6 +1485,7 @@ StartScanMultiInstance:
                 cycleCount++
                 SendDiscordMessage(webhookURL, "Cycle " . cycleCount . " Completed", "All tasks for the current cycle have finished.", COLOR_COMPLETED)
                 cycleFinished := 0
+                cycleValidated := true 
                 if (!MultiInstanceMode) {
                     SetTimer, AutoReconnect, 5000
                 }
@@ -2262,7 +1493,7 @@ StartScanMultiInstance:
             Sleep, 1000
         }
     }
-
+		
 Return
 
 ; actions
@@ -2365,40 +1596,6 @@ BuyCosmeticShop:
 
 Return
 
-AutoBuySummer:
-    if (cycleCount > 0 && Mod(currentMinute, 30) = 0 && currentMinute != lastSummerShopMinute) {
-        lastSummerShopMinute := currentMinute
-        SetTimer, PushBuySummer, -8000
-    }
-        if (summerShopFailed && Mod(currentMinute, 5) = 0 && currentMinute != lastSummerRetryMinute) {
-            lastSummerRetryMinute := currentMinute
-            SendDiscordMessage(webhookURL, "Retrying Summer Shop", "Attempting to run the summer shop cycle again after a previous failure.", COLOR_WARNING)
-            SetTimer, PushBuySummer, -8000
-        }
-Return
-
-
-PushBuySummer: 
-    actionQueue.Push("BuySummer")
-Return
-
-BuySummer:
-    currentSection := "BuySummer"
-
-    if (selectedSummerItems.Length()) {
-        if (UseAlts) {
-            for index, winID in windowIDs {
-                WinActivate, ahk_id %winID%
-                WinWaitActive, ahk_id %winID%,, 2
-                Gosub, SummerShopPath
-            }
-        }
-        else {
-            Gosub, SummerShopPath
-        } 
-    } 
-Return
-
 
 AutoHoney:
     if (cycleCount > 0 && Mod(currentMinute, 5) = 0 && currentMinute != lastAutoHoneyMinute) {
@@ -2489,25 +1686,70 @@ RunAutoBearCraft:
 }
 Return
 
-autoCollectSummerHarvest:
-    if (cycleCount > 0 && currentMinute = 0 && Mod(currentHour, 1) = 0 && currentHour != lastSummerHarvestHour) {
-        lastSummerHarvestHour := currentHour
-        SetTimer, PushautoSummerHarvest, -8000
+AutoDinosaurCraft:
+if (dinosaurCraftingLocked = 1)
+	return
+
+    if (cycleCount > 0 && Mod(currentMinute, 5) = 0 && currentMinute != lastDinosaurCraftMinute) {
+        lastDinosaurCraftMinute := currentMinute
+        dinosaurCraftQueued := true
+        SetTimer, PushDinosaurCraft, -8000
+    }
+Return
+
+PushDinosaurCraft:
+    actionQueue.Push("RunAutoDinosaurCraft")
+    dinosaurCraftQueued := false
+Return
+
+RunAutoDinosaurCraft:
+    currentSection := "RunAutoDinosaurCraft"
+
+ if (selectedDinosaurCraftingItems.Length()) {
+    if (UseAlts) {
+        for index, winID in windowIDs {
+            WinActivate, ahk_id %winID%
+            WinWaitActive, ahk_id %winID%,, 2
+            Gosub, PrehistoricCraftPath
+        }
+    } else {
+        Gosub, PrehistoricCraftPath
+    }
+}
+Return
+
+
+
+
+autoSubmitPetEvent:
+
+    ; Trigger only if it's not the first cycle, it's exactly minute 0, and a new hour
+    ; if (cycleCount > 0 && currentMinute = 0 && currentHour != lastAutoSubmitHour) {
+    /*
+    if (cycleCount > 0 && currentMinute >= 0 && currentMinute <= 10 && currentHour != lastAutoSubmitHour){
+        lastAutoSubmitHour := currentHour
+        SetTimer, PushautoSubmit, -8000
+    }
+    */
+
+    if (cycleCount > 0 && Mod(currentMinute, 5) = 0 && currentMinute != lastAutoEggMinute) {
+        lastAutoEggMinute := currentMinute
+        SetTimer, PushautoSubmit, -8000
     }
 
 Return
 
-PushautoSummerHarvest:
+PushautoSubmit:
 
-    actionQueue.Push("SubmitHarvest")
+    actionQueue.Push("PetAutoSubmit")
 
 Return
 
-SubmitHarvest:
+PetAutoSubmit:
 
-    currentSection := "SubmitHarvest"
-    if (autoSummerHarvest) {
-        Gosub, SummerHarvestPath
+    currentSection := "PetAutoSubmit"
+    if (autoSubmit) {
+        Gosub, PrehistoricAutoSubmit
     }
 
 Return
@@ -2621,12 +1863,6 @@ SetTimers:
     cosmeticAutoActive := 1
     SetTimer, AutoBuyCosmeticShop, 1000 ; checks every second if it should queue
 
-    if (selectedSummerItems.Length()) {
-        actionQueue.Push("BuySummer")
-    }
-    summerAutoActive := 1
-    SetTimer, AutoBuySummer, 1000 ; checks every second if it should queue
-
     if (AutoHoney) {
         actionQueue.Push("RunAutoHoney")
     }
@@ -2645,9 +1881,17 @@ SetTimers:
     bearCraftingAutoActive := 1
     SetTimer, AutoBearCraft, 1000 ; checks every second if it should queue
 
-    autoSummerHarvestActive := 1
-    SetTimer, autoCollectSummerHarvest, 1000 ; checks every second if it should queue
-    
+    if (selectedDinosaurCraftingItems.Length()) {
+        actionQueue.Push("RunAutoDinosaurCraft")
+    }
+    dinosaurCraftingAutoActive := 1
+    SetTimer, AutoDinosaurCraft, 1000 ; checks every second if it should queue
+
+    if (PrehistoricAutoSubmit) {
+        actionQueue.Push("PetAutoSubmit")
+    }
+    autoSumbitAutoActive := 1
+    SetTimer, autoSubmitPetEvent, 1000 ; checks every second if it should queue
 Return
 
 UpdateTime:
@@ -2663,44 +1907,43 @@ UpdateTime:
 Return
 
 AutoReconnect:
+    global actionQueue, failCount, started, autoReconnectLocked
+    global firstWindow, privateServerLink, webhookURL, discordUserID, PingSelected
 
-    global actionQueue
+    if (failCount < 4)
+        Return
 
-    shouldReconnect := false
+    if (autoReconnectLocked)
+        Return
 
-    Loop, 3 {
-        detectedColor1 := simpleDetect(0x302927, 0, 0.3988, 0.3548, 0.6047, 0.6674)
-        detectedColor2 := simpleDetect(0x3D3B39, 0, 0.3988, 0.3548, 0.6047, 0.6674)
-        detectedWhite := simpleDetect(0xFFFFFF, 0, 0.3988, 0.3548, 0.6047, 0.6674)
+    if (privateServerLink = "")
+        Return
 
-        if ((detectedColor1 || detectedColor2) && detectedWhite && privateServerLink != "") {
-		shouldReconnect := true
-        break
-        } else {
-            break
-        }
+    autoReconnectLocked := 1
+    started := 0
+    actionQueue := []
+    failCount := 0
 
-        Sleep, 2000
-    }
+    SetTimer, AutoReconnect, -600000
 
-    if (shouldReconnect) {
-        started := 0
-        actionQueue := []
-        SetTimer, AutoReconnect, Off
-        Sleep, 500
-        WinClose, % "ahk_id" . firstWindow
-        Sleep, 1000
-        WinClose, % "ahk_id" . firstWindow
-        Sleep, 500
-        Run, % privateServerLink
-        ToolTip, Attempting To Reconnect
-        SetTimer, HideTooltip, -5000
-        SendDiscordMessage(webhookURL, "Reconnecting...", "Lost connection or macro errored, attempting to reconnect to the server.", COLOR_WARNING, PingSelected)
-        sleepAmount(15000, 30000)
-        SetTimer, CheckLoadingScreen, 5000
-    }
+    Sleep, 500
+    WinClose, % "ahk_id" . firstWindow
+    Sleep, 1000
+    WinClose, % "ahk_id" . firstWindow
+    Sleep, 1000
+    WinWaitClose, % "ahk_id" . firstWindow, , 5
+    Sleep, 1000
 
 
+    Run, %privateServerLink%
+
+
+    ToolTip, Attempting To Reconnect...
+    SetTimer, HideTooltip, -5000
+
+    SendDiscordMessage(webhookURL, "Reconnecting...", "Lost connection or macro errored, attempting to reconnect to the server.", COLOR_WARNING, PingSelected)
+    sleepAmount(15000, 45000)
+    SetTimer, CheckLoadingScreen, 5000
 Return
 
 CheckLoadingScreen:
@@ -2711,31 +1954,49 @@ CheckLoadingScreen:
 
     WinActivate, % "ahk_id" . firstWindow
 
-    if (simpleDetect(0x000000, 0, 0.75, 0.75, 0.9, 0.9)) {
+    sleepAmount(5000, 10000)
+    if (simpleDetect(0x000000, 0, 0.8, 0.8, 0.9, 0.9)) {
         SafeClickRelative(midX, midY)
     }
     else {
         ToolTip, Rejoined Successfully
-        sleepAmount(10000, 20000)
+        sleepAmount(15000, 30000)
         SendDiscordMessage(webhookURL, "Reconnected Successfully", "Successfully reconnected to the server and resuming macro.", COLOR_SUCCESS, PingSelected)
-        Sleep, 200
+        Sleep, 500
         Gosub, StartScanMultiInstance
+
+        autoReconnectLocked := 0  
     }
 
 Return
 
 ; set up labels
 
+untoggleUiNav:
+
+    ; make sure the ui nav is not togggled at the start of the macro 
+    Sleep, 50
+    Loop, 2 {
+        SendRaw, %UINavToggle%
+        Sleep, 50
+    }
+    SafeClickRelative(0.5, 0.5)
+    Sleep, 50
+    uiUniversal("33332223250505")
+    Sleep, 150
+Return
+
 alignment:
 
-    ToolTip, Beginning Alignment
+    ToolTip, Screen Resolution: %screenWidth%x%screenHeight%`nBeginning Alignment
     SetTimer, HideTooltip, -5000
         SendDiscordMessage(webhookURL, "[Debug] alignment", "Alignment process started.", COLOR_INFO, false, true)
-
+    Gosub, untoggleUiNav
+    Sleep, 100
     SafeClickRelative(0.5, 0.5)
     Sleep, 100
 
-    searchitem("recall")
+    searchitem("recall", 0, 0, 0, 1)
 
     Sleep, 200
 
@@ -2750,9 +2011,13 @@ alignment:
         Sleep, 100
         Gosub, cameraChange
         Sleep, 100
+        SafeMoveRelative(0.5, 0.8)
+        Sleep, 100
         }
     else {
         Gosub, zoomAlignment
+        Sleep, 100
+        SafeMoveRelative(0.5, 0.8)
         Sleep, 100
     }
 
@@ -2788,11 +2053,13 @@ cameraAlignment:
     Sleep, 200
     SafeMoveRelative(0.5, 0.5)
     Sleep, 200
-    MouseMove, 0, 800, R
+    MouseMove, 0, 800, 0, R
     Sleep, 200
     Click, Right, Up
-
+    Sleep, 50
+    SafeMoveRelative(0.5, 0.5)
 Return
+
 
 zoomAlignment:
 
@@ -2824,8 +2091,15 @@ characterAlignment:
     sendKeybind(SavedKeybind)
     Sleep, 10
 
+    if (UINavigationFix) {
+        repeatKey("Left", 5)
+        Sleep, 10
+        repeatKey("Up", 5)
+        Sleep, 10
+    }
+
     repeatKey("Right", 3)
-    Loop, % ((SavedSpeed = "Ultra") ? 12 : (SavedSpeed = "Max") ? 18 : 8) {
+    Loop, % ((SavedSpeed = "Ultra") ? 12 : (SavedSpeed = "Max") ? 30 : 8) {
     Send, {Enter}
     Sleep, 10
     repeatKey("Right", 2)
@@ -2839,522 +2113,68 @@ characterAlignment:
 
 Return
 
-; buying paths
-
-EggShopPath:
-
-    SendDiscordMessage(webhookURL, "[Debug] EggShopPath", "Function started.", COLOR_INFO, false, true)
-    Sleep, 100
-    uiUniversal("11110")
-    Sleep, 100
-    hotbarController(1, 0, "2")
-    sleepAmount(100, 1000)
-    SafeClickRelative(midX, midY)
-    SendDiscordMessage(webhookURL, "Egg Cycle", "Starting egg buying cycle.", COLOR_INFO)
-    Sleep, 800
-
-    ; egg 1 sequence
-    SendDiscordMessage(webhookURL, "[Debug] EggShopPath", "Starting egg 1 sequence.", COLOR_INFO, false, true)
-    Send, {Up Down}
-    Sleep, 800
-    Send {Up Up}
-    sleepAmount(500, 1000)
-    Send {e}
-    Sleep, 100
-    uiUniversal("11114", 0, 0)
-    Sleep, 100
-    quickDetectEgg(0x26EE26, 15, 0.41, 0.65, 0.52, 0.70)
-    Sleep, 800
-    ; egg 2 sequence
-        SendDiscordMessage(webhookURL, "[Debug] EggShopPath", "Starting egg 2 sequence.", COLOR_INFO, false, true)
-    Send, {Up down}
-    Sleep, 200
-    Send, {Up up}
-    sleepAmount(100, 1000)
-    Send {e}
-    Sleep, 100
-    uiUniversal("11114", 0, 0)
-    Sleep, 100
-    quickDetectEgg(0x26EE26, 15, 0.41, 0.65, 0.52, 0.70)
-    Sleep, 800
-    ; egg 3 sequence
-        SendDiscordMessage(webhookURL, "[Debug] EggShopPath", "Starting egg 3 sequence.", COLOR_INFO, false, true)
-    Send, {Up down}
-    Sleep, 200
-    Send, {Up up}
-    sleepAmount(100, 1000)
-    Send, {e}
-    Sleep, 200
-    uiUniversal("11114", 0, 0)
-    Sleep, 100
-    quickDetectEgg(0x26EE26, 15, 0.41, 0.65, 0.52, 0.70)
-    Sleep, 300
-
-    closeRobuxPrompt()
-    sleepAmount(1250, 2500)
-    uiUniversal("11110")
-    Sleep, 100
-    SendDiscordMessage(webhookURL, "Eggs Completed", "Finished the egg buying cycle.", COLOR_COMPLETED)
-
-    if (AutoAlign) {
-                SendDiscordMessage(webhookURL, "[Debug] EggShopPath", "Auto-aligning after cycle.", COLOR_INFO, false, true)
-        GoSub, cameraChange
-        Sleep, 100
-        Gosub, zoomAlignment
-        Sleep, 100
-        GoSub, cameraAlignment
-        Sleep, 100
-        Gosub, characterAlignment
-        Sleep, 100
-        Gosub, cameraChange
-    }
-    else {
-        Gosub, zoomAlignment
-    }
-
-Return
-
-SeedShopPath:
-
-    seedsCompleted := 0
-        SendDiscordMessage(webhookURL, "[Debug] SeedShopPath", "Function started.", COLOR_INFO, false, true)
-
-    uiUniversal("1111020")
-    sleepAmount(100, 1000)
-    Send, {e}
-    SendDiscordMessage(webhookURL, "Seed Cycle", "Starting seed buying cycle.", COLOR_INFO)
-    sleepAmount(2500, 5000)
-    ; checks for the shop opening up to 5 times to ensure it doesn't fail
-    Loop, 5 {
-                SendDiscordMessage(webhookURL, "[Debug] SeedShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
-        if (simpleDetect(0x00CCFF, 10, 0.54, 0.20, 0.65, 0.325)) {
-            ToolTip, Seed Shop Opened
-            CheckAndCloseBuyOption()
-            SetTimer, HideTooltip, -1500
-            SendDiscordMessage(webhookURL, "Seed Shop Status", "Seed Shop Opened.", COLOR_INFO)
-            Sleep, 200
-            uiUniversal("3331114433331114405550555", 0)
-            Sleep, 100
-            buyUniversal("seed")
-            SendDiscordMessage(webhookURL, "Seed Shop Status", "Seed Shop Closed.", COLOR_INFO)
-            seedsCompleted = 1
-        }
-        if (seedsCompleted) {
-            break
-        }
-        Sleep, 2000
-    }
-
-    closeShop("seed", seedsCompleted)
-
-    SendDiscordMessage(webhookURL, "Seeds Completed", "Finished the seed buying cycle.", COLOR_COMPLETED)
-
-Return
-
-GearShopPath:
-
-    gearsCompleted := 0
-        SendDiscordMessage(webhookURL, "[Debug] GearShopPath", "Function started.", COLOR_INFO, false, true)
-
-    hotbarController(0, 1, "0")
-    uiUniversal("11110")
-    sleepAmount(100, 500)
-    hotbarController(1, 0, "2")
-    sleepAmount(100, 500)
-    SafeClickRelative(midX, midY)
-    sleepAmount(1200, 2500)
-    Send, {e}
-    sleepAmount(1500, 5000)
-    dialogueClick("gear")
-    SendDiscordMessage(webhookURL, "Gear Cycle", "Starting gear buying cycle.", COLOR_INFO)
-    sleepAmount(2500, 5000)
-    ; checks for the shop opening up to 5 times to ensure it doesn't fail
-    Loop, 5 {
-                SendDiscordMessage(webhookURL, "[Debug] GearShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
-        if (simpleDetect(0x00CCFF, 10, 0.54, 0.20, 0.65, 0.325)) {
-            ToolTip, Gear Shop Opened
-            CheckAndCloseBuyOption()
-            SetTimer, HideTooltip, -1500
-            SendDiscordMessage(webhookURL, "Gear Shop Status", "Gear Shop Opened.", COLOR_INFO)
-            Sleep, 200
-            uiUniversal("3331114433331114405550555", 0)
-            Sleep, 100
-            buyUniversal("gear")
-            SendDiscordMessage(webhookURL, "Gear Shop Status", "Gear Shop Closed.", COLOR_INFO)
-            gearsCompleted = 1
-        }
-        if (gearsCompleted) {
-            break
-        }
-        Sleep, 2000
-                if (!gearsCompleted) {
-            if (AutoAlign) {
-                GoSub, cameraChange
-                Sleep, 100
-                Gosub, zoomAlignment
-                Sleep, 100
-                GoSub, cameraAlignment
-                Sleep, 100
-                Gosub, characterAlignment
-                Sleep, 100
-                Gosub, cameraChange
-            }
-    }
-}
-
-    closeShop("gear", gearsCompleted)
-    
-    Sleep, 1000
-
-    Gosub, zoomAlignment
-
-    hotbarController(0, 1, "0")
-    SendDiscordMessage(webhookURL, "Gears Completed", "Finished the gear buying cycle.", COLOR_COMPLETED)
-
-Return
-
-CosmeticShopPath:
-
-    ; if you are reading this please forgive this absolute garbage label
-    cosmeticsCompleted := 0
-        SendDiscordMessage(webhookURL, "[Debug] CosmeticShopPath", "Function started.", COLOR_INFO, false, true)
-
-    hotbarController(0, 1, "0")
-    uiUniversal("11110")
-    sleepAmount(100, 500)
-    hotbarController(1, 0, "2")
-    sleepAmount(100, 500)
-    SafeClickRelative(midX, midY)
-    sleepAmount(800, 1000)
-    Send, {Down Down}
-    Sleep, 550
-    Send, {Down Up}
-    sleepAmount(100, 1000)
-    Send, {e}
-    sleepAmount(2500, 5000)
-    SendDiscordMessage(webhookURL, "Cosmetic Cycle", "Starting cosmetic buying cycle.", COLOR_INFO)
-    ; checks for the shop opening up to 5 times to ensure it doesn't fail
-    Loop, 5 {
-        SendDiscordMessage(webhookURL, "[Debug] CosmeticShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
-        if (simpleDetect(0x00CCFF, 10, 0.61, 0.182, 0.764, 0.259)) {
-            ToolTip, Cosmetic Shop Opened
-            SetTimer, HideTooltip, -1500
-            SendDiscordMessage(webhookURL, "Cosmetic Shop Status", "Cosmetic Shop Opened.", COLOR_INFO)
-            Sleep, 200
-            for index, item in cosmeticItems {
-                label := StrReplace(item, " ", "")
-                currentItem := cosmeticItems[A_Index]
-                Gosub, %label%
-                SendDiscordMessage(webhookURL, "Cosmetic Purchased", "Bought " . currentItem, COLOR_SUCCESS)
-                Sleep, 100
-            }
-            SendDiscordMessage(webhookURL, "Cosmetic Shop Status", "Cosmetic Shop Closed.", COLOR_INFO)
-            cosmeticsCompleted = 1
-        }
-        if (cosmeticsCompleted) {
-            break
-        }
-        Sleep, 2000
-    }
-
-    if (cosmeticsCompleted) {
-        Sleep, 500
-        uiUniversal("111114150320")
-    }
-    else {
-        SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect Cosmetic Shop opening.", COLOR_ERROR, PingSelected)
-        ; failsafe
-        uiUniversal("11114111350")
-        Sleep, 50
-        uiUniversal("11110")
-    }
-
-    hotbarController(0, 1, "0")
-    SendDiscordMessage(webhookURL, "Cosmetics Completed", "Finished the cosmetic buying cycle.", COLOR_COMPLETED)
-
-Return
-
-SummerShopPath:
-
-    summerCompleted := false
-    shopOpened := false
-    summerShopFailed := false
-        SendDiscordMessage(webhookURL, "[Debug] SummerShopPath", "Function started.", COLOR_INFO, false, true)
-
-    WinActivate, ahk_exe RobloxPlayerBeta.exe
-    Sleep, 100
-    uiUniversal(11110)
-    Sleep, 100
-    uiUniversal(111110)
-    Sleep, 100
-    Sleep, % FastMode ? 500 : 2500
-    Send, {d down}
-    Sleep, 9900
-    Send, {d up}
-    Sleep, 30
-    Send, {s down}
-    Sleep, 900
-    Send, {s up}
-    Sleep, 200
-    Loop, 4 {
-        Send, {WheelDown}
-        Sleep, 20
-    }
-    ; Talk To NPC
-    Sleep, 250
-    Send, {e}
-    Sleep, 1500
-
-    ; Repositioning Camera View
-    Loop, 20 {
-    Send, {WheelUp}
-    Sleep, 20
-    }
-    Loop, 6 {
-        Send, {WheelDown}
-        Sleep, 20
-    }
-    Sleep, 500
-    SafeClickRelative(0.61, 0.43) ;use F4 to get the exact value of the right place for you
-    Sleep, 100
-    SafeClickRelative(0.61, 0.46) ;use F4 to get the exact value of the right place for you
-    Sleep, % FastMode ? 500 : 1500
-    SendDiscordMessage(webhookURL, "Summer Cycle", "Starting summer buying cycle.", COLOR_INFO)
-    Sleep, % FastMode ? 2500 : 5000
-
-     ; detect shop open (up to 5 tries)
-    Loop, 5 {
-        SendDiscordMessage(webhookURL, "[Debug] SummerShopPath", "Shop detection loop, attempt " . A_Index, COLOR_INFO, false, true)
-        if (simpleDetect(0xFAB312, 10, 0.54, 0.20, 0.65, 0.325) ) {
-            shopOpened := true
-            CheckAndCloseBuyOption()
-            ToolTip, Summer Shop Opened
-            SetTimer, HideTooltip, -1500
-        SendDiscordMessage(webhookURL, "Summer Shop Status", "Summer Shop Opened.", COLOR_INFO)
-            Sleep, 200
-	break
-        }
-        Sleep, 2000
-    }
+ShopFailSafe() {
+    global shopOpened, AutoAlign
 
     if (!shopOpened) {
-        SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect Summer Shop opening.", COLOR_ERROR, PingSelected)
-        uiUniversal("3332223111133322231111501450")
-	summerShopFailed := true
-    if (AutoAlign) {
-        GoSub, cameraChange
+        SendDiscordMessage(webhookURL, "Statut Info", "Re-running AutoAlign...", COLOR_INFO)
+        closeRobuxPrompt()
         Sleep, 100
-        Gosub, zoomAlignment
-        Sleep, 100
-        GoSub, cameraAlignment
-        Sleep, 100
-        Gosub, characterAlignment
-        Sleep, 100
-        Gosub, cameraChange
-    }
-        Return
-    }
-    ; shop opennig 
-    uiUniversal("3331144333311144505044", 0)
-    Sleep, 100
 
-    summerNames := ["Summer Seed Pack", "Delphinium Seed", "Lily Of The Valley Seed", "Traveler's Fruit Seed", "Mutation Spray Burnt", "Oasis Crate"
-                , "Oasis Egg", "Hamster"]
+        if (AutoAlign) {
+            Gosub, untoggleUiNav
+            Sleep, 100
+            GoSub, cameraChange
+            Sleep, 100
+            Gosub, zoomAlignment
+            Sleep, 100
+            Gosub, cameraAlignment
+            Sleep, 100
+            Gosub, characterAlignment
+            Sleep, 100
+            Gosub, cameraChange
 
-    summerPaths := [ "3333333333333333333444435044"
-                    , "33333333333333333334444504"
-                    , "333333333333333333344444504"
-                    , "3333333333333333333444444504"
-                    , "33333333333333333334444444504"
-                    , "3333333333333333333444444445044"
-                    , "333333333333333333344444444445044"
-                    , "3333333333333333333444444444444504" ]
+            SendDiscordMessage(webhookURL, "Statut Info", "AutoAlign ran successfully.", COLOR_INFO)
+        } else {
+            SendDiscordMessage(webhookURL, "Statut Info", "AutoAlign is disabled, skipping alignment.", COLOR_INFO)
+        }
 
-    selectedSummerItems := []
-    Loop, % summerNames.Length()
-    {
-        IniRead, value, %A_ScriptDir%\settings.ini, Summer, Item%A_Index%, 0
-        if (value = 1)
-            selectedSummerItems.Push(A_Index)
+        Sleep, 100
+        uiUniversal("1110110202222220")
+        Sleep, 100
+        return true
     }
 
-    for index, idx in selectedSummerItems {
-        currentItem := summerNames[idx]
-        path := summerPaths[idx]
-
-        uiUniversal(path, 0, 1)
-        quickDetect(0x26EE26, 0x1DB31D, 5, 0.4262, 0.2903, 0.6918, 0.8208)
-        uiUniversal("350", 0, 1)
-        Sleep, 300
-    }
-
-    SendDiscordMessage(webhookURL, "Summer Shop Has Now Been Closed.")
-	summerCompleted := true
-    if (summerCompleted) {
-        Sleep, 500
-        uiUniversal("3333333333333322225006", 1, 1)
-        Sleep, 120          ; in case a robux prompt
-        Send, {Escape}
-        Sleep, 80
-        Send, {Escape}
-        Sleep, 50
-        SendDiscordMessage(webhookURL, "Summer Completed", "Finished the summer buying cycle.", COLOR_COMPLETED)
-    }
-			Sleep, % FastMode ? 150 : 1500
-    if (AutoAlign) {
-        GoSub, cameraChange
-        Sleep, 100
-        Gosub, zoomAlignment
-        Sleep, 100
-        GoSub, cameraAlignment
-        Sleep, 100
-        Gosub, characterAlignment
-        Sleep, 100
-        Gosub, cameraChange
-    }
-    else {
-        Gosub, zoomAlignment
-    }
-Return
-
+    return false
+}
 
 ClickFirstFour() {
-        SafeClickRelative(0.35, 0.70)
+    baseX := 0.35
+    stepX := 0.032
+    y := 0.70
+
+    Loop, 4 {
+        x := baseX + (stepX * (A_Index - 1))
+        SafeClickRelative(x, y)
         Sleep, % FastMode ? 50 : 200
         Send, {e}
         Sleep, % FastMode ? 400 : 200
-        SafeClickRelative(0.38, 0.70)
-        Sleep, % FastMode ? 50 : 200
-        Send, {e}
-        Sleep, % FastMode ? 400 : 200
-        SafeClickRelative(0.415, 0.70)
-        Sleep, % FastMode ? 50 : 200
-        Send, {e}
-        Sleep, % FastMode ? 400 : 200
-        SafeClickRelative(0.45, 0.70)
-        Sleep, % FastMode ? 50 : 200
-        Send, {e}
-        Sleep, % FastMode ? 400 : 200
+    }
 }
 
 ClickFirstEight() {
-        SafeClickRelative(0.35, 0.70)
+    baseX := 0.35
+    stepX := 0.035
+    y := 0.70
+
+    Loop, 8 {
+        x := baseX + (stepX * (A_Index - 1))
+        SafeClickRelative(x, y)
         Sleep, % FastMode ? 50 : 200
         Send, {e}
         Sleep, % FastMode ? 400 : 200
-        SafeClickRelative(0.38, 0.70)
-        Sleep, % FastMode ? 50 : 200
-        Send, {e}
-        Sleep, % FastMode ? 400 : 200
-        SafeClickRelative(0.415, 0.70)
-        Sleep, % FastMode ? 50 : 200
-        Send, {e}
-        Sleep, % FastMode ? 400 : 200
-        SafeClickRelative(0.45, 0.70)
-        Sleep, % FastMode ? 50 : 200
-        Send, {e}
-        Sleep, % FastMode ? 400 : 200
-        SafeClickRelative(0.485, 0.70)
-        Sleep, % FastMode ? 50 : 200
-        Send, {e}
-        Sleep, % FastMode ? 400 : 200
-        SafeClickRelative(0.52, 0.70)
-        Sleep, % FastMode ? 50 : 200
-        Send, {e}
-        Sleep, % FastMode ? 400 : 200
-        SafeClickRelative(0.555, 0.70)
-        Sleep, % FastMode ? 50 : 200
-        Send, {e}
-        Sleep, % FastMode ? 400 : 200
-        SafeClickRelative(0.59, 0.70)
-        Sleep, % FastMode ? 50 : 200
-        Send, {e}
+    }
 }
-
-
-AutoHoneyPath:
-
-    autoHoneyCompleted := false
-        SendDiscordMessage(webhookURL, "[Debug] AutoHoneyPath", "Function started.", COLOR_INFO, false, true)
-
-    WinActivate, ahk_exe RobloxPlayerBeta.exe
-    Sleep, 100
-    SendDiscordMessage(webhookURL, "Honey Compress Cycle", "Starting honey compress cycle.", COLOR_INFO)
-    hotbarController(0, 1, "0")
-    uiUniversal("11110")
-    sleepAmount(100, 500)
-    hotbarController(1, 0, "2")
-    sleepAmount(100, 500)
-    SafeClickRelative(midX, midY)
-    sleepAmount(800, 1000)
-    Send, {Down Down}
-    Sleep, 2000
-    Send, {Down Up}
-    sleepAmount(100, 1000)
-    Send, {e}
-    Sleep, % FastMode ? 100 : 300
-    uiUniversal("63636363616066664646460")
-    Sleep, % FastMode ? 100 : 300
-    SendInput, ^{Backspace 5}
-    Sleep, % FastMode ? 100 : 300
-    Send, pollinated
-
-    Loop, 3
-    {
-	ClickFirstFour()
-    }
-    Send, 2
-    Sleep, 100
-    Send, 2
-    Sleep, 100
-    Sleep, 30000
-    Send, {e}
-    Sleep, 100
-    Loop, 3
-    {
-	ClickFirstFour()
-    }
-    Send, 2
-    Sleep, 100
-    Send, 2
-    Sleep, 100
-    Sleep, 30000
-    Send, {e}
-    Sleep, 100
-    Loop, 3
-    {
-	ClickFirstFour()
-    }
-
-    Sleep, % FastMode ? 150 : 300
-    SafeClickRelative(0.64, 0.51)
-    Sleep, % FastMode ? 100 : 200
-    Send, {2}
-    Send, {2}
-    Sleep, % FastMode ? 100 : 200
-    uiUniversal("63636363636161616160")
-    SendDiscordMessage(webhookURL, "Honey Compress Complete", "Finished the honey compress cycle.", COLOR_COMPLETED)
-    autoHoneyCompleted := true
-
-    TrackHoneyCycle()
-
-TrackHoneyCycle()
-{
-    global honeyCount, webhookURL
-
-    honeyCount += 30
-
-    SendDiscordMessage(webhookURL, "Honey Compressed", "+30 honey collected.", COLOR_SUCCESS)
-    SendDiscordMessage(webhookURL, "Total Honey", "Total honey collected so far: " . honeyCount, COLOR_INFO)
-}
-
-        Sleep, 120          ; in case a robux prompt
-        Send, {Escape}
-        Sleep, 80
-        Send, {Escape}
-        Sleep, 50
-Return
-
 
 ClickSeedFilter() {
         SafeClickRelative(0.31, 0.72)
@@ -3363,762 +2183,6 @@ ClickFruitFilter() {
         SafeClickRelative(0.31, 0.78)
 }
 	
-
-AutoSeedCraftPath:
-
-if (cycleCount = 0 && ManualSeedCraftLock > 0) {
-	seedCraftingLocked := 1
-	SetTimer, UnlockSeedCraft, -%ManualSeedCraftLock%
-Return
-}
-
-selectedSeedCraftingItems := []
-Loop, 12 {
-    lastRanItem := currentItem 
-    IniRead, value, %A_ScriptDir%\settings.ini, SeedCrafting, Item%A_Index%, 0
-    if (value = 1)
-        selectedSeedCraftingItems.Push(A_Index)
-}
-
-if (seedCraftActionQueue.Length() = 0) {
-    for index, item in selectedSeedCraftingItems
-        seedCraftActionQueue.Push(item)
-}
-
-    seedCraftCompleted := false
-    seedCraftShopOpened := false
-    seedCraftShopFailed := false
-
-CraftShopUiFix() {
-    uiUniversal("33333333")
-    Sleep, % FastMode ? 100 : 300
-    uiUniversal("51515154545450505333333")
-    Sleep, % FastMode ? 100 : 300
-    uiUniversal("3333333545450505")
-}
-
-    WinActivate, ahk_exe RobloxPlayerBeta.exe
-    SendDiscordMessage(webhookURL, "Seed Crafting Cycle", "Starting seed crafting cycle.", COLOR_INFO)
-    hotbarController(0, 1, "0")
-    uiUniversal("11110")
-    sleepAmount(100, 500)
-    hotbarController(1, 0, "2")
-    sleepAmount(100, 500)
-    SafeClickRelative(midX, midY)
-    sleepAmount(800, 1000)
-    Send, {Down Down}
-    Sleep, 900
-    Send, {Down Up}
-    sleepAmount(100, 1000)
-    Send, {c}
-    Sleep, % FastMode ? 100 : 300
-    Send, {e}
-    Sleep, % FastMode ? 500 : 1500
-    Send, {e}
-    Sleep, % FastMode ? 100 : 300
-Loop, 5 {
-        if (simpleDetect(0xA0014C, 15, 0.54, 0.20, 0.65, 0.325)) {
-            ToolTip, Seed Crafter Opened
-            SetTimer, HideTooltip, -1500
-            seedCraftShopOpened := true
-            SendDiscordMessage(webhookURL, "Seed Crafter Status", "Seed Crafter Opened.", COLOR_INFO)
-	    break
-	}
-        else if (simpleDetect(0xA3014D, 15, 0.54, 0.20, 0.65, 0.325)) {
-            ToolTip, Seed Crafter Opened
-            SetTimer, HideTooltip, -1500
-            seedCraftShopOpened := true
-            SendDiscordMessage(webhookURL, "Seed Crafter Status", "Seed Crafter Opened.", COLOR_INFO)
-	    break
-	}
-}
-
-    if (!seedCraftShopOpened) {
-        SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect Seed Crafter opening.", COLOR_ERROR, PingSelected)
-        uiUniversal("63636362626263616161616363636262626361616161606561646056")
-	seedCraftShopFailed := true
-    if (AutoAlign) {
-        GoSub, cameraChange
-        Sleep, 100
-        Gosub, zoomAlignment
-        Sleep, 100
-        GoSub, cameraAlignment
-        Sleep, 100
-        Gosub, characterAlignment
-        Sleep, 100
-        Gosub, cameraChange
-    }
-        Return
-    }
-
-if (seedCraftActionQueue.Length() > 0) {
-    currentCraftingItem := seedCraftActionQueue[1]
-
-    if (currentCraftingItem = 1) {
-	CraftShopUiFix()
-	currentItem := "Peace Lily"
-        uiUniversal("333333354545505545505")
-
-	Sleep, 100
-	searchItem("rafflesia")
-	Sleep, 100
-	ClickSeedFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("cauliflower")
-	Sleep, 100
-	ClickSeedFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 500
-	closeRobuxPrompt()
-
-	seedCraftingLocked := 1
-	SetTimer, UnlockSeedCraft, -1200000 
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        seedCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 2) {
-	currentItem := "Aloe Vera Seed"
-    uiUniversal("33333333")
-    Sleep, % FastMode ? 100 : 300
-    uiUniversal("515151545450505333333")
-    Sleep, % FastMode ? 100 : 300
-    uiUniversal("3333333545450505")
-
-        uiUniversal("333333333354545450545505")
-
-	Sleep, 100
-	searchItem("peace")
-	Sleep, 100
-	ClickSeedFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("prickly")
-	Sleep, 100
-	ClickSeedFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 500
-	closeRobuxPrompt()
-
-	seedCraftingLocked := 1
-	SetTimer, UnlockSeedCraft, -600000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        seedCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 3) {
-        uiUniversal("3333333545450505")
-	currentItem := "Guanabana Seed"
-        uiUniversal("33333333335454545450545505")
-
-	Sleep, 100
-	searchItem("bamboo")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("manuka")
-	Sleep, 100
-	ClickSeedFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 500
-	closeRobuxPrompt()
-
-	seedCraftingLocked := 1
-	SetTimer, UnlockSeedCraft, -960000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        seedCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-
-}
-    seedCraftCompleted := true
-    Sleep, % FastMode ? 100 : 200
-	Send, {2}
-	Send, {2}
-    Sleep, % FastMode ? 100 : 200
-    uiUniversal("63636363636161616160")
-    SendDiscordMessage(webhookURL, "Seed Crafting Complete", "Finished the seed crafting cycle.", COLOR_COMPLETED)
-    Sleep, % FastMode ? 100 : 200
-    if (AutoAlign) {
-        GoSub, cameraChange
-        Sleep, 100
-        Gosub, zoomAlignment
-        Sleep, 100
-        GoSub, cameraAlignment
-        Sleep, 100
-        Gosub, characterAlignment
-        Sleep, 100
-        Gosub, cameraChange
-    }
-Return
-
-AutoBearCraftPath:
-
-if (cycleCount = 0 && ManualBearCraftLock > 0) {
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -%ManualBearCraftLock%
-Return
-}
-
-selectedBearCraftingItems := []
-Loop, 15 {
-    lastRanItem := currentItem 
-    IniRead, value, %A_ScriptDir%\settings.ini, BearCrafting, Item%A_Index%, 0
-    if (value = 1)
-        selectedBearCraftingItems.Push(A_Index)
-}
-
-if (bearCraftActionQueue.Length() = 0) {
-    for index, item in selectedBearCraftingItems
-        bearCraftActionQueue.Push(item)
-}
-
-    bearCraftCompleted := false
-    bearCraftShopOpened := false
-    bearCraftShopFailed := false
-
-    WinActivate, ahk_exe RobloxPlayerBeta.exe
-    SendDiscordMessage(webhookURL, "Bear Crafting Cycle", "Starting bear crafting cycle.", COLOR_INFO)
-    hotbarController(0, 1, "0")
-    uiUniversal("11110")
-    sleepAmount(100, 500)
-    hotbarController(1, 0, "2")
-    sleepAmount(100, 500)
-    SafeClickRelative(midX, midY)
-    sleepAmount(800, 1000)
-    Send, {Down Down}
-    Sleep, 1200
-    Send, {Down Up}
-    sleepAmount(100, 1000)
-    Send, {c}
-    Sleep, % FastMode ? 100 : 300
-    Send, {e}
-    Sleep, % FastMode ? 500 : 1500
-    Send, {e}
-    Sleep, % FastMode ? 100 : 300
-Loop, 5 {
-        if (simpleDetect(0xA0014C, 15, 0.54, 0.20, 0.65, 0.325)) {
-            ToolTip, Seed Crafter Opened
-            SetTimer, HideTooltip, -1500
-            bearCraftShopOpened := true
-            SendDiscordMessage(webhookURL, "Bear Crafter Status", "Bear Crafter Opened.", COLOR_INFO)
-	    break
-	}
-        else if (simpleDetect(0xA3014D, 15, 0.54, 0.20, 0.65, 0.325)) {
-            ToolTip, Seed Crafter Opened
-            SetTimer, HideTooltip, -1500
-            bearCraftShopOpened := true
-            SendDiscordMessage(webhookURL, "Bear Crafter Status", "Bear Crafter Opened.", COLOR_INFO)
-	    break
-	}
-}
-
-    if (!bearCraftShopOpened) {
-        SendDiscordMessage(webhookURL, "Shop Detection Failed", "Failed to detect Bear Crafter opening.", COLOR_ERROR, PingSelected)
-        uiUniversal("63636362626263616161616363636262626361616161606561646056")
-	bearCraftShopFailed := true
-    if (AutoAlign) {
-        GoSub, cameraChange
-        Sleep, 100
-        Gosub, zoomAlignment
-        Sleep, 100
-        GoSub, cameraAlignment
-        Sleep, 100
-        Gosub, characterAlignment
-        Sleep, 100
-        Gosub, cameraChange
-    }
-        Return
-    }
-
-if (bearCraftActionQueue.Length() > 0) {
-    currentCraftingItem := bearCraftActionQueue[1]
-
-    if (currentCraftingItem = 1) {
-	CraftShopUiFix()
-	currentItem := "Lightning Rod"
-        uiUniversal("3333333545450545505")
-
-	Sleep, 100
-	searchItem("basic")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("advanced")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("godly")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -2700000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 2) {
-	CraftShopUiFix()
-	currentItem := "Reclaimer"
-        uiUniversal("333333354545450545505")
-
-	Sleep, 100
-	searchItem("common")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("harvest")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -1500000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 3) {
-	CraftShopUiFix()
-	currentItem := "Tropical Mist Sprinkler"
-        uiUniversal("33333335454545450545505")
-
-	Sleep, 100
-	searchItem("coconut")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("dragon")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("mango")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("godly")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 4) {
-
-	CraftShopUiFix()
-	currentItem := "Berry Blusher Sprinkler"
-        uiUniversal("3333333545454545450545505")
-
-	Sleep, 100
-	searchItem("grape")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("blueberry")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("strawberry")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("godly")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 5) {
-
-        uiUniversal("33333333")
-        Sleep, % FastMode ? 100 : 300
-        uiUniversal("5151515454545454545450505333333")
-        Sleep, % FastMode ? 100 : 300
-        uiUniversal("3333333545454545450505")
-
-	CraftShopUiFix()
-	currentItem := "Spice Spritzer Sprinkler"
-        uiUniversal("333333354545454545450545505")
-
-	Sleep, 100
-	searchItem("pepper")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("ember")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("cacao")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("master")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 6) {
-
-	CraftShopUiFix()
-	currentItem := "Sweet Soaker Sprinkler"
-        uiUniversal("33333335454545454545450545505")
-
-	Sleep, 100
-	searchItem("watermelon")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-	searchItem("master")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 7) {
-	CraftShopUiFix()
-	currentItem := "Flower Froster Sprinkler"
-        uiUniversal("3333333545454545454545450545505")
-
-	Sleep, 100
-	searchItem("orange")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("daffodil")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("advanced")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("basic")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 8) {
-	CraftShopUiFix()
-	currentItem := "Stalk Sprout Sprinkler"
-        uiUniversal("33333333333354545454545454545450545505")
-
-	Sleep, 100
-	searchItem("bamboo")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("beanstalk")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("mushroom")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("advanced")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -3600000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 9) {
-	CraftShopUiFix()
-	currentItem := "Mutation Spray Choc"
-        uiUniversal("33333333333333335454545454545454545450545505")
-
-	Sleep, 100
-	searchItem("cacao")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("cleaning")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -720000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 10) {
-	CraftShopUiFix()
-	currentItem := "Mutation Spray Chilled"
-        uiUniversal("3333333333333333545454545454545454545450545505")
-
-	Sleep, 100
-	searchItem("godly")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("cleaning")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -300000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 11) {
-	CraftShopUiFix()
-	currentItem := "Mutation Spray Shocked"
-        uiUniversal("333333333333333354545454545454545454545450545505")
-
-	Sleep, 100
-	searchItem("lightning")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("cleaning")
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -1800000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 12) {
-	CraftShopUiFix()
-	currentItem := "Anti Bee Egg"
-        uiUniversal("333333333333333354545454545454545454545454555054545505")
-
-	Sleep, 100
-	searchItem("egg")
-	Sleep, 100
-	ClickFirstEight()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -7200000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-    if (currentCraftingItem = 13) {
-	CraftShopUiFix()
-	currentItem := "Pack Bee"
-        uiUniversal("33333333333333335454545454545454545454545454545550545505")
-
-	Sleep, 100
-	searchItem("sunflower")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("dahlia")
-	Sleep, 100
-	ClickFruitFilter()
-	Sleep, 100
-	ClickFirstFour()
-	Sleep, 100
-        Send, {vkC0sc029}
-	Sleep, 100
-	searchItem("egg")
-	Sleep, 100
-	ClickFirstEight()
-	Sleep, 500
-	closeRobuxPrompt()
-	Sleep, 100
-
-	bearCraftingLocked := 1
-	SetTimer, UnlockBearCraft, -14400000
-	SendDiscordMessage(webhookURL, "Crafting Attempted", "Attempted to craft " . currentItem . ".", COLOR_INFO)
-        bearCraftActionQueue.RemoveAt(1)
-        Sleep, 50
-    }
-}
-
-    bearCraftCompleted := true
-    Sleep, % FastMode ? 100 : 200
-	Send, {2}
-	Send, {2}
-    Sleep, % FastMode ? 100 : 200
-    uiUniversal("63636363636161616160")
-    SendDiscordMessage(webhookURL, "Bear Crafting Complete", "Finished the bear crafting cycle.", COLOR_COMPLETED)
-    Sleep, % FastMode ? 100 : 200
-    if (AutoAlign) {
-        GoSub, cameraChange
-        Sleep, 100
-        Gosub, zoomAlignment
-        Sleep, 100
-        GoSub, cameraAlignment
-        Sleep, 100
-        Gosub, characterAlignment
-        Sleep, 100
-        Gosub, cameraChange
-    }
-Return
-
 UnlockSeedCraft:
     seedCraftingLocked := 0
 Return
@@ -4127,600 +2191,31 @@ UnlockBearCraft:
     bearCraftingLocked := 0
 Return
 
-; cosmetic labels
-
-Cosmetic1:
-
-    Sleep, 50
-    Loop, 2 {
-        uiUniversal("11111445000000000000")
-        sleepAmount(50, 200)
-    }
-
-Return
-
-Cosmetic2:
-
-    Sleep, 50
-    Loop, 2 {
-        uiUniversal("11111442250000000000000")
-        sleepAmount(50, 200)
-    }
-
-Return
-
-Cosmetic3:
-
-    Sleep, 50
-    Loop, 2 {
-        uiUniversal("11111442222500000000000")
-        sleepAmount(50, 200)
-    }
-
-Return
-
-Cosmetic4:
-
-    Sleep, 50
-    Loop, 2 {
-        uiUniversal("111114422224500000000000")
-        sleepAmount(50, 200)
-    }
-
-Return
-
-Cosmetic5:
-
-    Sleep, 50
-    Loop, 2 {
-        uiUniversal("111114422224150000000000")
-        sleepAmount(50, 200)
-    }
-
-Return
-
-Cosmetic6:
-
-    Sleep, 50
-    Loop, 2 {
-        uiUniversal("111114422224115000000000")
-        sleepAmount(50, 200)
-    }
-
-Return
-
-Cosmetic7:
-
-    Sleep, 50
-    Loop, 2 {
-        uiUniversal("1111144222241115000000000")
-        sleepAmount(50, 200)
-    }
-
-Return
-
-Cosmetic8:
-
-    Sleep, 50
-    Loop, 2 {
-        uiUniversal("1111144222241111500000000")
-        sleepAmount(50, 200)
-    }
-
-Return
-
-Cosmetic9:
-
-    Sleep, 50
-    Loop, 2 {
-        uiUniversal("11111442222411111500000000")
-        sleepAmount(50, 200)
-    }
-
+UnlockDinosaurCraft:
+    dinosaurCraftingLocked := 0
 Return
 
 
-SummerHarvestPath:
+; buying paths
+#Include %A_ScriptDir%\Paths\SeedShopPath.ahk
+#Include %A_ScriptDir%\Paths\GearShopPath.ahk
+#Include %A_ScriptDir%\Paths\EggShopPath.ahk
+#Include %A_ScriptDir%\Paths\CosmeticShopPath.ahk
+;#Include %A_ScriptDir%\Paths\SkyShopPath.ahk
+;#Include %A_ScriptDir%\Paths\GnomeShopPath.ahk         ; i got them already, added next version
+;#Include %A_ScriptDir%\Paths\AutoCollectPath.ahk
+#Include %A_ScriptDir%\Paths\AutoHoneyPath.ahk
+#Include %A_ScriptDir%\Paths\AutoSeedCraftPath.ahk
+#Include %A_ScriptDir%\Paths\AutoBearCraftPath.ahk
+#Include %A_ScriptDir%\Paths\PrehistoricCraftPath.ahk
+#Include %A_ScriptDir%\Paths\PrehistoricAutoSubmit.ahk
 
-    global savedHarvestSpeed
 
-    cycleCounter := 0
 
-    if(LoadInputs()){
-        ToolTip, No Saved Path Found! `n Skipping Summer Harvest Path
-        Sleep, 5000
-        return
-    }
-    SendDiscordMessage(webhookURL, "**[Summer Harvest Started]**")
-    IniRead, numberOfCycle, %settingsFile%, Main, NumberOfCycle
-    if (numberOfCycle = "ERROR" || numberOfCycle = "")
-        numberOfCycle := 3
-    Loop, %numberOfCycle% {
-        cycleCounter++
-        SendDiscordMessage(webhookURL, "**Cycle Number: ** **" . cycleCounter . "** out of **" . numberOfCycle . "**")
-        uiUniversal(11110)
-        PlayInputs()
-        Sleep, 100
-        Send, {o down}
-        Sleep, 300
-        Send, {o up}
-        Sleep, 100
+#Include %A_ScriptDir%\Settings\Settings.ahk
 
-        if(savedHarvestSpeed = "Fast"){
-            ; For Safe Clearing
 
-            Send, {Space up}
-            Send, {Right up}
+#Include %A_ScriptDir%\Settings\MacroControl.ahk
 
-            ; =================
-
-            Loop, 20 {
-            Send, {WheelUp}
-            Sleep, 20
-            }
-            Sleep, 100
-            Loop, 3 {
-                Send, {WheelDown}
-                Sleep, 20
-            }
-            Sleep, 100
-            Send, {Space down}
-            Sleep, 100
-            Send, {Right down}
-            Sleep, 100
-            SetTimer, SpamE, 10
-            ToolTip, Collecting Fruits. Please Wait~
-            Sleep, (20 * 1000)  ; 20 seconds
-            SetTimer, SpamE, Off
-            Send, {Space up}
-            Send, {Right up}
-            ToolTip, Done!
-
-            ; Fix Camera
-            SafeClickRelative(0.5, 0.5)
-            Sleep, 100
-            GoSub, cameraChange
-            Sleep, 100
-            Gosub, zoomAlignment
-            Sleep, 100
-            GoSub, cameraAlignment
-            Sleep, 100
-            Gosub, characterAlignment
-            Sleep, 100
-            Gosub, cameraChange
-            Sleep, 100
-        }
-        else
-        {
-            ; Stable way of collecting fruits
-            Send, {e down}
-            ToolTip, Collecting Fruits. Please Wait~
-            Sleep, % (30 * 1000) ; Hold for 30 sec
-            Send, {e up}
-            ToolTip, Done!
-            ; Repositioning Camera After Collect
-            Loop, 20 {
-            Send, {WheelUp}
-            Sleep, 20
-            }
-            Sleep, 100
-            Loop, 6 {
-                Send, {WheelDown}
-                Sleep, 20
-            }
-        }
-        Sleep, 1000
-        ToolTip
-        Sleep, 1000
-        uiUniversal(11110)
-        Sleep, 100
-        uiUniversal(111110)
-        Sleep, 100
-        Send, {d down}
-        Sleep, % ((10 * 1000) + 700) ; Hold for 10.7 sec
-        Send, {d up}
-        Sleep, 30
-        Send, {s down}
-        Sleep, 900
-        Send, {s up}
-        Loop, 4 {
-            Send, {WheelDown}
-            Sleep, 20
-        }
-        ; Talk To NPC
-        Send, e
-        Sleep, 1500
-
-        ; Repositioning Camera View
-        Loop, 20 {
-        Send, {WheelUp}
-        Sleep, 20
-        }
-        Loop, 6 {
-            Send, {WheelDown}
-            Sleep, 20
-        }
-        Sleep, 500
-        SafeClickRelative(0.66, 0.58) ;use F4 to get the exact value of the right place for you
-        Sleep, 1000
-        uiUniversal(11110)
-    }
-    cycleCounter := 0 ;reset cycle count
-    SendDiscordMessage(webhookURL, "**[Summer Harvest Finished]**")
-
-Return
-
-; === Toggle Recording ===
-ToggleRecording() {
-    global recording, inputList, startTime, lastEventTime, keyStates
-
-    if (!recording) {
-        Gosub, alignment
-        recording := true
-        inputList := []
-        keyStates := {}
-        startTime := A_TickCount
-        lastEventTime := startTime
-        SetTimer, MonitorInputs, 10
-        ToolTip Recording started... (Press F1 to stop)
-        Sleep, 1500
-    } else {
-        recording := false
-        SetTimer, MonitorInputs, Off
-        ToolTip
-        SaveInputs()  ; Save when stopping
-        MsgBox % "Recording stopped. " inputList.MaxIndex() " events recorded and saved."
-    }
-}
-
-; === Playback ===
-DemoInput(){
-    global inputList, playback
-
-    if (inputList.MaxIndex() = "")
-    {
-        MsgBox No input recorded.
-        return
-    }
-    Gosub, alignment
-    PlayInputs()
-}
-
-PlayInputs() {
-    global inputList, playback
-
-    if (inputList.MaxIndex() = "")
-    {
-        ToolTip, No input recorded!
-        return
-    }
-    ; Gosub, alignment
-    /*
-    Sleep, 1000
-    uiUniversal(11110)
-    Sleep, 100
-    */
-    playback := true
-    ToolTip Emulating Recorded Path...
-    for index, item in inputList {
-        Sleep, % item.time
-
-        if (item.type = "key") {
-            if (item.event = "down")
-                SendInput % "{" item.key " down}"
-            else if (item.event = "up")
-                SendInput % "{" item.key " up}"
-        } else if (item.type = "mouse") {
-            MouseMove, % item.x, % item.y, 0
-            if (item.button = "LButton")
-                Click, left
-            else if (item.button = "RButton")
-                Click, right
-            else if (item.button = "MButton")
-                Click, middle
-        }
-    }
-    ToolTip
-    playback := false
-}
-
-; === Input Monitoring Timer ===
-MonitorInputs:
-    global inputList, lastEventTime, keyStates
-
-    ; Mouse buttons
-    for index, btn in ["LButton", "RButton", "MButton"] {
-        state := GetKeyState(btn, "P")
-        prev := keyStates.HasKey(btn) ? keyStates[btn] : 0
-        if (state && !prev) {
-            PushEvent("mouse", btn, A_TickCount)
-        }
-        keyStates[btn] := state
-    }
-
-    ; Keyboard keys
-    Loop, 255 {
-        vk := A_Index
-        key := GetKeyName(Format("vk{:02X}", vk))
-        if (key = "")
-            continue
-
-        ; Prevent recording toggle/play/load keys
-        if (key = "F1" || key = "F2" || key = "F3")
-            continue
-
-        state := GetKeyState(key, "P")
-        prev := keyStates.HasKey(key) ? keyStates[key] : 0
-        now := A_TickCount
-
-        if (state && !prev) {
-            PushEvent("key", key, now, "down")
-        } else if (!state && prev) {
-            PushEvent("key", key, now, "up")
-        }
-        keyStates[key] := state
-    }
-return
-
-; === Push Recorded Event ===
-PushEvent(type, keyOrBtn, time, event:="") {
-    global inputList, lastEventTime
-
-    elapsed := time - lastEventTime
-    lastEventTime := time
-
-    if (type = "key") {
-        inputList.Push({type: "key", key: keyOrBtn, event: event, time: elapsed})
-    } else if (type = "mouse") {
-        MouseGetPos, x, y
-        inputList.Push({type: "mouse", button: keyOrBtn, x: x, y: y, time: elapsed})
-    }
-}
-
-; === Save Inputs to File ===
-SaveInputs() {
-    global inputList
-    macroFile := A_ScriptDir "\savedPath.ini"
-    FileDelete, %macroFile%
-
-    Loop, % inputList.MaxIndex()
-    {
-        i := A_Index
-        event := inputList[i]
-        section := "Event" . i
-
-        IniWrite, % event.type,   %macroFile%, %section%, Type
-        IniWrite, % event.time,   %macroFile%, %section%, Delay
-
-        if (event.type = "key") {
-            IniWrite, % event.key,    %macroFile%, %section%, Key
-            IniWrite, % event.event,  %macroFile%, %section%, Action
-        } else if (event.type = "mouse") {
-            IniWrite, % event.button, %macroFile%, %section%, Button
-            IniWrite, % event.x,      %macroFile%, %section%, X
-            IniWrite, % event.y,      %macroFile%, %section%, Y
-        }
-    }
-    IniWrite, % inputList.MaxIndex(), %macroFile%, Info, TotalEvents
-}
-
-; === Load Inputs from File ===
-LoadInputs() {
-    global inputList
-    macroFile := A_ScriptDir "\savedPath.ini"
-
-    if (!FileExist(macroFile)) {
-        ToolTip, Load Failed! savedPath.ini not found!
-        return true
-    }
-
-    inputList := []
-    IniRead, totalEvents, %macroFile%, Info, TotalEvents, 0
-
-    Loop, %totalEvents%
-    {
-        section := "Event" . A_Index
-        IniRead, type,   %macroFile%, %section%, Type
-        IniRead, delay,  %macroFile%, %section%, Delay
-
-        if (type = "key") {
-            IniRead, key,    %macroFile%, %section%, Key
-            IniRead, action, %macroFile%, %section%, Action
-            inputList.Push({type: "key", key: key, event: action, time: delay})
-        } else if (type = "mouse") {
-            IniRead, button, %macroFile%, %section%, Button
-            IniRead, x,      %macroFile%, %section%, X
-            IniRead, y,      %macroFile%, %section%, Y
-            inputList.Push({type: "mouse", button: button, x: x, y: y, time: delay})
-        }
-    }
-    if(totalEvents){
-        ToolTip, % "Load Successful! " totalEvents " events loaded from the Saved Path!"
-    }else{
-        ToolTip, Empty Saved Path! No Paths were loaded.
-    }
-    Sleep, 1500
-    ToolTip
-}
-
-
-
-; save settings and start/exit
-
-SaveSettings:
-
-    Gui, Submit, NoHide
-
-    ; — now write them out —
-    Loop, % eggItems.Length()
-        IniWrite, % (eggItem%A_Index% ? 1 : 0), %settingsFile%, Egg, Item%A_Index%
-
-    Loop, % gearItems.Length()
-        IniWrite, % (GearItem%A_Index% ? 1 : 0), %settingsFile%, Gear, Item%A_Index%
-
-    Loop, % seedItems.Length()
-        IniWrite, % (SeedItem%A_Index% ? 1 : 0), %settingsFile%, Seed, Item%A_Index%
-
-    Loop, % summerItems.Length()
-    	IniWrite, % (SummerItem%A_Index% ? 1 : 0), %settingsFile%, Summer, Item%A_Index%
-
-    Loop, % seedCraftingItems.Length()
-    	IniWrite, % (SeedCraftingItem%A_Index% ? 1 : 0), %settingsFile%, SeedCrafting, Item%A_Index%
-
-    Loop, % bearCraftingItems.Length()
-    	IniWrite, % (BearCraftingItem%A_Index% ? 1 : 0), %settingsFile%, BearCrafting, Item%A_Index%
-
-    IniWrite, %AutoAlign%, %settingsFile%, Main, AutoAlign
-    IniWrite, %PingSelected%, %settingsFile%, Main, PingSelected
-    IniWrite, %MultiInstanceMode%, %settingsFile%, Main, MultiInstanceMode
-    IniWrite, %BuyAllCosmetics%, %settingsFile%, Cosmetic, BuyAllCosmetics
-    IniWrite, %SelectAllEggs%, %settingsFile%, Egg, SelectAllEggs
-    IniWrite, %SelectAllSummer%, %settingsFile%, Summer, SelectAllSummer
-    IniWrite, %AutoHoney%, %settingsFile%, AutoHoney, AutoHoneySetting
-    IniWrite, % autoSummerHarvest,     %settingsFile%, Main, SummerHarvest
-    IniWrite, % numberOfCycle,         %settingsFile%, Main, NumberOfCycle
-    IniWrite, % savedHarvestSpeed,     %settingsFile%, Main, HarvestSpeed
-
-Return
-
-StopMacro(terminate := 1) {
-
-    Gui, Submit, NoHide
-    Sleep, 50
-    started := 0
-    Gosub, SaveSettings
-    Gui, Destroy
-    if (terminate)
-        ExitApp
-
-}
-
-PauseMacro(terminate := 1) {
-
-    Gui, Submit, NoHide
-    Sleep, 50
-    started := 0
-    Gosub, SaveSettings
-
-}
-
-; pressing x on window closes macro 
-GuiClose:
-
-    StopMacro(1)
-
-Return
-
-; pressing f7 button reloads
-Quit:
-
-    PauseMacro(1)
-    SendDiscordMessage(webhookURL, "Macro reloaded.", "The script is being reloaded.", COLOR_INFO)
-    Reload ; ahk built in reload
-
-Return
-
-; f7 reloads
-F7::
-
-    PauseMacro(1)
-    SendDiscordMessage(webhookURL, "Macro reloaded.", "The script is being reloaded via hotkey.", COLOR_INFO)
-    Reload ; ahk built in reload
-
-Return
-
-; f5 starts scan
-F5:: 
-
-Gosub, StartScanMultiInstance
-
-Return
-
-F8::
-
-MsgBox, 1, Message, % "Delete debug file?"
-
-IfMsgBox, OK
-FileDelete, debug.txt
-
-Return
 
 #MaxThreadsPerHotkey, 2
-
-F9::
-    global debugWebhookMode
-    debugWebhookMode := !debugWebhookMode
-    tooltipText := "Debug Webhook Mode: " . (debugWebhookMode ? "ON" : "OFF")
-    ToolTip, %tooltipText%
-    SetTimer, HideTooltip, -1500
-    SendDiscordMessage(webhookURL, "Debug Mode Toggled", tooltipText, COLOR_WARNING)
-Return
-
-F1::ToggleRecording()
-F2::DemoInput()
-F3::LoadInputs()
-
-F10::
-
-    MouseGetPos, mx, my
-    WinGetPos, winX, winY, winW, winH, ahk_exe RobloxPlayerBeta.exe
-    xRatio := (mx - winX) / winW
-    yRatio := (my - winY) / winH
-    MsgBox, Relative Position:`nX: %xRatio%`nY: %yRatio%
-
-Return
-
-SpamE:
-
-    Send, e
-
-Return
-
-F4::
-    global started
-
-    if(!started){
-        Gosub, alignment
-        Gosub, SummerHarvestPath
-    }
-
-Return
-
-F13::
-
-    Gosub, alignment
-    Sleep, 1000
-    uiUniversal(11110)
-    Sleep, 100
-    uiUniversal(111110)
-    Sleep, 100
-    Send, {d down}
-    Sleep, % ((10 * 1000) + 700) ; Hold for 10.7 sec
-    Send, {d up}
-    Sleep, 30
-    Send, {s down}
-    Sleep, 900
-    Send, {s up}
-    Loop, 4 {
-        Send, {WheelDown}
-        Sleep, 20
-    }
-    ; Talk To NPC
-    Send, e
-    Sleep, 1500
-
-    ; Repositioning Camera View
-    Loop, 20 {
-    Send, {WheelUp}
-    Sleep, 20
-    }
-    Loop, 6 {
-        Send, {WheelDown}
-        Sleep, 20
-    }
-    Sleep, 50000
-    SafeClickRelative(0.62, 0.53) ;use F4 to get the exact value of the right place for you
-    Sleep, 1000
-    uiUniversal(11110)
-
-Return
